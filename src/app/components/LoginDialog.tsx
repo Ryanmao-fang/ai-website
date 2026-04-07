@@ -83,7 +83,7 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
           <DialogHeader className="text-center mb-6">
             <DialogTitle className="text-2xl">登录或注册</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              登录后可开通会员，解锁全站内容
+              登录后可按方案解锁名词、工具库、学习路线与模板等权益
             </DialogDescription>
           </DialogHeader>
 

@@ -4,12 +4,18 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
+import { useAuth } from "../context/AuthContext";
+import { tierDisplayName } from "@/lib/membershipTier";
 
 export function UserCenter() {
+  const { email, membershipTier, signOut } = useAuth();
+  const displayName =
+    email && email.includes("@") ? email.split("@")[0] : email || "学习者";
+
   const user = {
-    name: "AI学习者",
+    name: displayName,
     avatar: "👤",
-    level: "进阶会员",
+    level: tierDisplayName(membershipTier),
     points: 2340,
     joinDate: "2025年3月",
   };
@@ -76,7 +82,7 @@ export function UserCenter() {
                 <Link to="/membership">
                   <Button className="rounded-full bg-primary hover:bg-accent">
                     <Crown className="w-4 h-4 mr-2" />
-                    升级会员
+                    {"pro" === membershipTier ? "续费 / 管理" : "升级会员"}
                   </Button>
                 </Link>
               </div>
@@ -248,6 +254,7 @@ export function UserCenter() {
                 <Button
                   variant="ghost"
                   className="w-full justify-start rounded-2xl hover:bg-destructive/10 text-destructive"
+                  onClick={() => signOut()}
                 >
                   <LogOut className="w-4 h-4 mr-3" />
                   退出登录

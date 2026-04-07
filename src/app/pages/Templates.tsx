@@ -1,13 +1,22 @@
 import { useState } from "react";
-import { Copy, Check, Star, Search } from "lucide-react";
+import { Link } from "react-router";
+import { Copy, Check, Star, Search, Lock } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { motion } from "motion/react";
+import { useAuth } from "../context/AuthContext";
+import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
+
+function templateTierForId(id: number): "standard" | "pro" {
+  return id >= 7 ? "pro" : "standard";
+}
 
 export function Templates() {
+  const { membershipTier } = useAuth();
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("全部");
 
@@ -133,12 +142,23 @@ export function Templates() {
   });
 
   const handleCopy = (id: number, text: string) => {
+    if ("pro" === templateTierForId(id) && "pro" !== membershipTier) {
+      setUpgradeOpen(true);
+      return;
+    }
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
+    <>
+      <AccessNoticeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        variant="upgrade"
+        onRequestLogin={() => setUpgradeOpen(false)}
+      />
     <div className="min-h-screen py-12 bg-secondary/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -191,22 +211,59 @@ export function Templates() {
 
         {/* Templates Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredTemplates.map((template, index) => (
+          {filteredTemplates.map((template, index) => {
+            const tier = templateTierForId(template.id);
+            const lockedPro = "pro" === tier && "pro" !== membershipTier;
+
+            return (
             <motion.div
               key={template.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
+              className="relative"
             >
-              <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-6 bg-white">
+              <Card
+                className={`rounded-3xl border-border hover:shadow-lg transition-all p-6 bg-white ${
+                  lockedPro ? "opacity-90" : ""
+                }`}
+              >
+                {lockedPro ? (
+                  <div className="absolute inset-0 z-10 rounded-3xl bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 p-6">
+                    <Lock className="w-8 h-8 text-primary" />
+                    <p className="text-sm text-muted-foreground text-center">企业级模板库 · 专业会员专享</p>
+                    <Button
+                      type="button"
+                      className="rounded-full bg-primary hover:bg-accent"
+                      onClick={() => setUpgradeOpen(true)}
+                    >
+                      升级解锁
+                    </Button>
+                    <Link to="/membership" className="text-xs text-primary hover:underline">
+                      了解专业会员
+                    </Link>
+                  </div>
+                ) : null}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
+                    <div className="flex flex-wrap gap-2 mb-3">
                     <Badge
                       variant="secondary"
-                      className="rounded-full bg-primary/10 text-primary border-0 mb-3"
+                      className="rounded-full bg-primary/10 text-primary border-0"
                     >
                       {template.category}
                     </Badge>
+                    <Badge
+                      variant="secondary"
+                      className={`rounded-full border-0 ${
+                        "pro" === tier
+                          ? "bg-amber-500/15 text-amber-800"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {"pro" === tier ? "企业级" : "高级模板"}
+                    </Badge>
+                    </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
                       {template.title}
                     </h3>
@@ -238,6 +295,7 @@ export function Templates() {
                     onClick={() => handleCopy(template.id, template.template)}
                     className="rounded-full bg-primary hover:bg-accent ml-4"
                     size="sm"
+                    disabled={lockedPro}
                   >
                     {copiedId === template.id ? (
                       <>
@@ -254,7 +312,8 @@ export function Templates() {
                 </div>
               </Card>
             </motion.div>
-          ))}
+          );
+          })}
         </div>
 
         {/* CTA */}
@@ -275,5 +334,6 @@ export function Templates() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }

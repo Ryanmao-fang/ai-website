@@ -1,12 +1,25 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router";
 import { ArrowLeft, Heart, Share2, BookOpen, Sparkles } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
+import { useAuth } from "../context/AuthContext";
+import { tierMeetsMin } from "@/lib/membershipTier";
+import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
 
 export function TermDetail() {
   const { id } = useParams();
+  const { membershipTier } = useAuth();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const handleFavoriteClick = () => {
+    if (!tierMeetsMin(membershipTier, "standard")) {
+      setUpgradeOpen(true);
+      return;
+    }
+  };
 
   // Mock data - in real app, fetch based on id
   const term = {
@@ -44,6 +57,13 @@ export function TermDetail() {
   };
 
   return (
+    <>
+      <AccessNoticeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        variant="upgrade"
+        onRequestLogin={() => setUpgradeOpen(false)}
+      />
     <div className="min-h-screen py-12 bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
@@ -79,7 +99,11 @@ export function TermDetail() {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Button className="rounded-full bg-primary hover:bg-accent">
+            <Button
+              type="button"
+              className="rounded-full bg-primary hover:bg-accent"
+              onClick={handleFavoriteClick}
+            >
               <Heart className="w-4 h-4 mr-2" />
               收藏 ({term.likes})
             </Button>
@@ -153,5 +177,6 @@ export function TermDetail() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }

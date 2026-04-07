@@ -2,11 +2,13 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api";
+import type { MembershipTier } from "@/lib/membershipTier";
 
 type AuthState = {
   userId: string | null;
   email: string | null;
   isPro: boolean;
+  membershipTier: MembershipTier;
   membershipEndsAt: string | null;
   accessToken: string | null;
   loading: boolean;
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userId: null,
     email: null,
     isPro: false,
+    membershipTier: "free",
     membershipEndsAt: null,
     accessToken: null,
     loading: true,
@@ -37,13 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const result = await apiClient.getMe(state.accessToken);
+      const tier = (result?.membership?.tier as MembershipTier) || "free";
       setState((prev) => ({
         ...prev,
         isPro: Boolean(result?.membership?.isPro),
+        membershipTier: ["free", "standard", "pro"].includes(tier) ? tier : "free",
         membershipEndsAt: result?.membership?.endAt || null,
       }));
     } catch (_error) {
-      setState((prev) => ({ ...prev, isPro: false, membershipEndsAt: null }));
+      setState((prev) => ({
+        ...prev,
+        isPro: false,
+        membershipTier: "free",
+        membershipEndsAt: null,
+      }));
     }
   };
 
@@ -70,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId: null,
           email: null,
           isPro: false,
+          membershipTier: "free",
           membershipEndsAt: null,
           accessToken: null,
           loading: false,
@@ -81,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: session.user.id,
         email: session.user.email || null,
         isPro: false,
+        membershipTier: "free",
         membershipEndsAt: null,
         accessToken: session.access_token,
         loading: false,

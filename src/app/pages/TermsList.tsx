@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Search, Filter, Heart } from "lucide-react";
+import { Search, Heart } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -8,9 +8,12 @@ import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { apiClient } from "@/lib/api";
+import { tierMeetsMin } from "@/lib/membershipTier";
+import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
 
 export function TermsList() {
-  const { accessToken } = useAuth();
+  const { accessToken, membershipTier } = useAuth();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
@@ -125,7 +128,10 @@ export function TermsList() {
 
   const toggleFavorite = async (termId: number) => {
     if (!accessToken) {
-      alert("请先登录并开通会员后再收藏");
+      return;
+    }
+    if (!tierMeetsMin(membershipTier, "standard")) {
+      setUpgradeOpen(true);
       return;
     }
     try {
@@ -143,6 +149,13 @@ export function TermsList() {
   };
 
   return (
+    <>
+      <AccessNoticeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        variant="upgrade"
+        onRequestLogin={() => setUpgradeOpen(false)}
+      />
     <div className="min-h-screen py-12 bg-secondary/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -246,5 +259,6 @@ export function TermsList() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -1,12 +1,24 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router";
 import { ArrowLeft, Star, ExternalLink, BookOpen, Lightbulb, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
+import { useAuth } from "../context/AuthContext";
+import { tierMeetsMin } from "@/lib/membershipTier";
+import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
 
 export function ToolDetail() {
   const { id } = useParams();
+  const { membershipTier } = useAuth();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const handleFavoriteClick = () => {
+    if (!tierMeetsMin(membershipTier, "standard")) {
+      setUpgradeOpen(true);
+    }
+  };
 
   // Mock data - in real app, fetch based on id
   const tool = {
@@ -82,6 +94,13 @@ export function ToolDetail() {
   };
 
   return (
+    <>
+      <AccessNoticeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        variant="upgrade"
+        onRequestLogin={() => setUpgradeOpen(false)}
+      />
     <div className="min-h-screen py-12 bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
@@ -130,7 +149,12 @@ export function ToolDetail() {
                       访问官网
                     </Button>
                   </a>
-                  <Button variant="outline" className="rounded-full border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full border-border"
+                    onClick={handleFavoriteClick}
+                  >
                     <Star className="w-4 h-4 mr-2" />
                     收藏
                   </Button>
@@ -228,5 +252,6 @@ export function ToolDetail() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }

@@ -9,63 +9,63 @@ import { Templates } from "./pages/Templates";
 import { UserCenter } from "./pages/UserCenter";
 import { Membership } from "./pages/Membership";
 import { Layout } from "./components/Layout";
-import { RequirePro } from "./components/RequirePro";
+import { RequireAccess } from "./components/RequireAccess";
 import { UserAgreement } from "./pages/UserAgreement";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 
-function ProTermsList() {
+function AuthTermsList() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="auth">
       <TermsList />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
-function ProTermDetail() {
+function AuthTermDetail() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="auth">
       <TermDetail />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
-function ProToolsList() {
+function AuthToolsList() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="auth">
       <ToolsList />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
-function ProToolDetail() {
+function AuthToolDetail() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="auth">
       <ToolDetail />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
-function ProLearningPath() {
+function StandardLearningPath() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="standard">
       <LearningPath />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
-function ProTemplates() {
+function StandardTemplates() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="standard">
       <Templates />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
-function ProUserCenter() {
+function StandardUserCenter() {
   return (
-    <RequirePro>
+    <RequireAccess minTier="standard">
       <UserCenter />
-    </RequirePro>
+    </RequireAccess>
   );
 }
 
@@ -75,13 +75,13 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: Home },
-      { path: "terms", Component: ProTermsList },
-      { path: "terms/:id", Component: ProTermDetail },
-      { path: "tools", Component: ProToolsList },
-      { path: "tools/:id", Component: ProToolDetail },
-      { path: "learning-path", Component: ProLearningPath },
-      { path: "templates", Component: ProTemplates },
-      { path: "user", Component: ProUserCenter },
+      { path: "terms", Component: AuthTermsList },
+      { path: "terms/:id", Component: AuthTermDetail },
+      { path: "tools", Component: AuthToolsList },
+      { path: "tools/:id", Component: AuthToolDetail },
+      { path: "learning-path", Component: StandardLearningPath },
+      { path: "templates", Component: StandardTemplates },
+      { path: "user", Component: StandardUserCenter },
       { path: "membership", Component: Membership },
       { path: "legal/user-agreement", Component: UserAgreement },
       { path: "legal/privacy-policy", Component: PrivacyPolicy },

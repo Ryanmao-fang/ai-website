@@ -1,15 +1,44 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2 } from "lucide-react";
+import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2, Lock } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { motion } from "motion/react";
+import { useAuth } from "../context/AuthContext";
+import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
 
 export function LearningPath() {
+  const { membershipTier } = useAuth();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<"beginner" | "intermediate" | "advanced">(
     "beginner"
   );
+
+  const proDeepItems = [
+    {
+      title: "1对1学习辅导",
+      description: "预约导师进行个性化答疑、作业批改与学习规划",
+    },
+    {
+      title: "独家深度课程",
+      description: "多模态、Agent、RAG 等企业级工程化专题串讲",
+    },
+    {
+      title: "企业级模板与案例",
+      description: "对齐真实业务场景的提示词、流程与交付模板",
+    },
+    {
+      title: "定制化学习方案",
+      description: "根据职业目标生成阶段性路线与资源清单",
+    },
+  ];
+
+  const handleProItemClick = () => {
+    if ("pro" !== membershipTier) {
+      setUpgradeOpen(true);
+    }
+  };
 
   const paths = {
     beginner: {
@@ -193,6 +222,13 @@ export function LearningPath() {
   };
 
   return (
+    <>
+      <AccessNoticeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        variant="upgrade"
+        onRequestLogin={() => setUpgradeOpen(false)}
+      />
     <div className="min-h-screen py-12 bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -351,8 +387,48 @@ export function LearningPath() {
               />
             </div>
           </Card>
+
+          <Card className="rounded-3xl border-border p-8 mt-10 bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <Lock className="w-5 h-5 text-amber-600" />
+              <h3 className="text-xl font-semibold text-foreground">专业会员 · 深度与定制</h3>
+              {"pro" === membershipTier ? (
+                <Badge className="rounded-full bg-amber-500/20 text-amber-900 border-0">已解锁</Badge>
+              ) : (
+                <Badge variant="secondary" className="rounded-full border-0">
+                  升级后可用
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              对应专业会员权益：1对1 学习辅导、独家深度课程、企业级模板库、优先体验新功能、专属社群交流、线下活动优先与定制化学习方案。
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {proDeepItems.map((item) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  className="text-left rounded-3xl border border-border bg-white/80 p-5 hover:shadow-md transition-all"
+                  onClick={handleProItemClick}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {item.description}
+                      </p>
+                    </div>
+                    {"pro" !== membershipTier ? (
+                      <Lock className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                    ) : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
         </motion.div>
       </div>
     </div>
+    </>
   );
 }
