@@ -14,6 +14,8 @@ import { getTermById, getTermBySlug, termsCatalog } from "@/content/termsCatalog
 import { recordBrowseEntry } from "@/lib/browseHistory";
 import { apiClient } from "@/lib/api";
 import { PageMeta } from "../components/PageMeta";
+import { publicContentApi } from "@/lib/publicContentApi";
+import { renderMarkdownBasic } from "@/lib/markdownBasic";
 
 export function TermDetail() {
   const { id } = useParams();
@@ -26,6 +28,64 @@ export function TermDetail() {
   const [shareHint, setShareHint] = useState("");
   const [helpfulStats, setHelpfulStats] = useState<{ yes: number; no: number } | null>(null);
   const [feedbackHint, setFeedbackHint] = useState("");
+  const [cmsTerm, setCmsTerm] = useState<any | null>(null);
+  const [cmsLoading, setCmsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!id) {
+        setCmsTerm(null);
+        return;
+      }
+      setCmsLoading(true);
+      const row = await publicContentApi.getTerm(id);
+      if (!cancelled) {
+        setCmsTerm(row);
+        setCmsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const effectiveTerm =
+    term ||
+    (cmsTerm
+      ? {
+          id: -1,
+          slug: String(cmsTerm.slug || id || ""),
+          name: String(cmsTerm.name || ""),
+          description: String(cmsTerm.description || ""),
+          category: String(cmsTerm.category || ""),
+          likes: 0,
+          simpleExplanation: String(cmsTerm.description || ""),
+          examples: [] as { title: string; content: string }[],
+          relatedTermIds: [] as number[],
+          image: String(cmsTerm.cover_image_url || ""),
+          readingMinutes: Number(cmsTerm.reading_minutes || 5),
+          aliases: [] as string[],
+          contentVersion: String(cmsTerm.content_version || ""),
+          references: [] as { title: string; url: string }[],
+        }
+      : null);
+
+  const cmsMarkdown = String(cmsTerm?.content_markdown || "");
+  const previewLen = cmsMarkdown ? Math.min(1600, Math.max(600, Math.floor(cmsMarkdown.length * 0.3))) : 0;
+  const cmsPreview = cmsMarkdown ? cmsMarkdown.slice(0, previewLen) : "";
+  const cmsRest = cmsMarkdown ? cmsMarkdown.slice(previewLen) : "";
+
+  if (!effectiveTerm) {
+    if (cmsLoading) {
+      return (
+        <div className="min-h-screen py-12 bg-background">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-muted-foreground">加载中…</div>
+        </div>
+      );
+    }
+    return <Navigate to="/not-found" replace />;
+  }
 
   useEffect(() => {
     if (!term) {
@@ -141,7 +201,7 @@ export function TermDetail() {
 
   return (
     <>
-      <PageMeta title={term.name} description={term.description} />
+      <PageMeta title={effectiveTerm.name} description={effectiveTerm.description} />
       <AccessNoticeDialog
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
@@ -172,21 +232,21 @@ export function TermDetail() {
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <Badge className="rounded-full bg-primary/10 text-primary border-0 mb-4">
-                  {term.category}
+                  {effectiveTerm.category}
                 </Badge>
-                <h1 className="text-4xl font-semibold text-foreground mb-4">{term.name}</h1>
-                <p className="text-lg text-muted-foreground">{term.description}</p>
+                <h1 className="text-4xl font-semibold text-foreground mb-4">{effectiveTerm.name}</h1>
+                <p className="text-lg text-muted-foreground">{effectiveTerm.description}</p>
                 <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  预计阅读约 {term.readingMinutes} 分钟
+                  预计阅读约 {effectiveTerm.readingMinutes} 分钟
                 </p>
-                {term.aliases.length > 0 ? (
+                {effectiveTerm.aliases.length > 0 ? (
                   <p className="text-sm text-muted-foreground mt-2">
-                    别名：{term.aliases.join("、")}
+                    别名：{effectiveTerm.aliases.join("、")}
                   </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground mt-2">
-                  内容版本：{term.contentVersion || "2026-04（随站更新）"}
+                  内容版本：{effectiveTerm.contentVersion || "2026-04（随站更新）"}
                 </p>
               </div>
             </div>
@@ -201,7 +261,7 @@ export function TermDetail() {
                   className={`w-4 h-4 mr-2 ${isFavorite ? "fill-white" : ""}`}
                 />
                 {!userId ? "登录后收藏" : isFavorite ? "已收藏" : "收藏"}
-                {userId ? `（${term.likes} 人喜欢）` : ""}
+                {userId && effectiveTerm.id > 0 ? `（${effectiveTerm.likes} 人喜欢）` : ""}
               </Button>
               <Button
                 type="button"
@@ -231,9 +291,31 @@ export function TermDetail() {
                 <Sparkles className="w-5 h-5 text-primary" />
                 <h2 className="text-xl font-semibold text-foreground">简单解释</h2>
               </div>
-              <p className="text-foreground leading-relaxed text-lg">{term.simpleExplanation}</p>
+              <p className="text-foreground leading-relaxed text-lg">{effectiveTerm.simpleExplanation}</p>
             </Card>
           </motion.div>
+
+          {cmsMarkdown ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }} className="mb-8">
+              <Card className="rounded-3xl border-border p-8 bg-white">
+                <h2 className="text-xl font-semibold text-foreground mb-4">正文</h2>
+                {renderMarkdownBasic(cmsPreview || cmsMarkdown)}
+                {!showFullContent && cmsRest ? (
+                  <div className="mt-6">
+                    <ContentLockInline
+                      unlocked={false}
+                      message="登录后继续阅读完整内容"
+                      actionLabel="登录 / 注册"
+                      onAction={() => openLogin()}
+                    >
+                      <div />
+                    </ContentLockInline>
+                  </div>
+                ) : null}
+                {showFullContent && cmsRest ? <div className="mt-6">{renderMarkdownBasic(cmsRest)}</div> : null}
+              </Card>
+            </motion.div>
+          ) : null}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}

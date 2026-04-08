@@ -22,10 +22,12 @@ import { getToolById, getToolBySlug, toolsCatalog } from "@/content/toolsCatalog
 import { recordBrowseEntry } from "@/lib/browseHistory";
 import { apiClient } from "@/lib/api";
 import { PageMeta } from "../components/PageMeta";
+import { publicContentApi } from "@/lib/publicContentApi";
+import { renderMarkdownBasic } from "@/lib/markdownBasic";
 
 export function ToolDetail() {
   const { id } = useParams();
-  const tool = getToolById(id) || getToolBySlug(id);
+  const localTool = getToolById(id) || getToolBySlug(id);
   const { membershipTier, accessToken, userId } = useAuth();
   const { openLogin } = useLoginDialog();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -35,9 +37,71 @@ export function ToolDetail() {
   const [avgRating, setAvgRating] = useState<{ count: number; average: number } | null>(null);
   const [myStars, setMyStars] = useState<number | null>(null);
   const [rateHint, setRateHint] = useState("");
+  const [cmsTool, setCmsTool] = useState<any | null>(null);
+  const [cmsLoading, setCmsLoading] = useState(false);
 
   useEffect(() => {
-    if (!tool) {
+    let cancelled = false;
+    (async () => {
+      if (!id) {
+        setCmsTool(null);
+        return;
+      }
+      setCmsLoading(true);
+      const row = await publicContentApi.getTool(id);
+      if (!cancelled) {
+        setCmsTool(row);
+        setCmsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const tool =
+    localTool ||
+    (cmsTool
+      ? {
+          id: -1,
+          slug: String(cmsTool.slug || id || ""),
+          name: String(cmsTool.name || ""),
+          description: String(cmsTool.description || ""),
+          icon: String(cmsTool.icon || "🧰"),
+          category: String(cmsTool.category || ""),
+          tags: (cmsTool.tags || []) as string[],
+          rating: Number(cmsTool.rating || 0),
+          link: String(cmsTool.link || ""),
+          platform: String(cmsTool.platform || ""),
+          openSource: Boolean(cmsTool.open_source),
+          priceTier: cmsTool.price_tier || "freemium",
+          suitableFor: String(cmsTool.suitable_for || ""),
+          disclaimer: String(cmsTool.disclaimer || ""),
+          fullDescription: String(cmsTool.description || ""),
+          useCases: [] as any[],
+          howToUse: [] as any[],
+          relatedToolIds: [] as number[],
+        }
+      : null);
+
+  const cmsMarkdown = String(cmsTool?.content_markdown || "");
+  const previewLen = cmsMarkdown ? Math.min(1800, Math.max(700, Math.floor(cmsMarkdown.length * 0.25))) : 0;
+  const cmsPreview = cmsMarkdown ? cmsMarkdown.slice(0, previewLen) : "";
+  const cmsRest = cmsMarkdown ? cmsMarkdown.slice(previewLen) : "";
+
+  if (!tool) {
+    if (cmsLoading) {
+      return (
+        <div className="min-h-screen py-12 bg-background">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-muted-foreground">加载中…</div>
+        </div>
+      );
+    }
+    return <Navigate to="/not-found" replace />;
+  }
+
+  useEffect(() => {
+    if (!tool || tool.id <= 0) {
       return;
     }
     recordBrowseEntry({
@@ -49,7 +113,7 @@ export function ToolDetail() {
   }, [tool]);
 
   const refreshFavorite = useCallback(async () => {
-    if (!accessToken || !tool || !tierMeetsMin(membershipTier, "standard")) {
+    if (!accessToken || !tool || tool.id <= 0 || !tierMeetsMin(membershipTier, "standard")) {
       setIsFavorite(false);
       return;
     }
@@ -69,6 +133,10 @@ export function ToolDetail() {
 
   useEffect(() => {
     if (!tool) {
+      return;
+    }
+    if (tool.id <= 0) {
+      // CMS-only 工具不参与评分体系（评分表以本地目录 id 为 key）
       return;
     }
     let cancelled = false;
@@ -136,9 +204,7 @@ export function ToolDetail() {
     setTimeout(() => setShareHint(""), 2400);
   };
 
-  if (!tool) {
-    return <Navigate to="/not-found" replace />;
-  }
+  // tool 可能来自 CMS，因此此处不再强制 NotFound
 
   const related = tool.relatedToolIds
     .map((rid) => toolsCatalog.find((t) => t.id === rid))
@@ -288,6 +354,31 @@ export function ToolDetail() {
                 <p className="leading-relaxed">{tool.disclaimer}</p>
               </div>
             </Card>
+          ) : null}
+
+          {cmsMarkdown ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mb-8">
+              <Card className="rounded-3xl border-border p-8 bg-white">
+                <div className="flex items-center gap-2 mb-4">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">教程与说明</h2>
+                </div>
+                {renderMarkdownBasic(cmsPreview || cmsMarkdown)}
+                {!showFullTutorial && cmsRest ? (
+                  <div className="mt-6">
+                    <ContentLockInline
+                      unlocked={false}
+                      message="登录后查看完整教程与合规说明"
+                      actionLabel="登录 / 注册"
+                      onAction={() => openLogin()}
+                    >
+                      <div />
+                    </ContentLockInline>
+                  </div>
+                ) : null}
+                {showFullTutorial && cmsRest ? <div className="mt-6">{renderMarkdownBasic(cmsRest)}</div> : null}
+              </Card>
+            </motion.div>
           ) : null}
 
           {!showFullTutorial ? (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Search, Star, ExternalLink } from "lucide-react";
 import { Input } from "../components/ui/input";
@@ -7,18 +7,88 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
 import { listToolsSummary, toolsCatalog } from "@/content/toolsCatalog";
+import { publicContentApi } from "@/lib/publicContentApi";
 
 export function ToolsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [platformFilter, setPlatformFilter] = useState("全部");
   const [priceTierFilter, setPriceTierFilter] = useState("全部");
+  const [cmsList, setCmsList] = useState<
+    | {
+        id: string;
+        slug: string;
+        name: string;
+        description: string;
+        icon: string;
+        category: string;
+        tags: string[];
+        rating: number;
+        link: string;
+        openSource?: boolean;
+        priceTier?: "free" | "freemium" | "paid";
+      }[]
+    | null
+  >(null);
 
   const categories = ["全部", "对话助手", "图像生成", "视频创作", "写作辅助", "编程开发", "办公效率"];
   const platforms = ["全部", "开源", "商业"];
   const priceTiers = ["全部", "以免费为主", "免费+增值", "多数付费"];
 
-  const list = listToolsSummary();
+  const localList = listToolsSummary().map((t) => {
+    const full = toolsCatalog.find((x) => x.id === t.id);
+    return {
+      id: String(t.id),
+      slug: (full?.slug || t.slug) as string,
+      name: t.name,
+      description: t.description,
+      icon: t.icon,
+      category: t.category,
+      tags: t.tags,
+      rating: t.rating,
+      link: t.link,
+      openSource: Boolean(full?.openSource),
+      priceTier: (full?.priceTier || "freemium") as "free" | "freemium" | "paid",
+    };
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const items = await publicContentApi.listTools();
+        if (cancelled) {
+          return;
+        }
+        if (items && items.length > 0) {
+          setCmsList(
+            items.map((t) => ({
+              id: t.slug,
+              slug: t.slug,
+              name: t.name,
+              description: t.description,
+              icon: t.icon,
+              category: t.category,
+              tags: t.tags || [],
+              rating: Number(t.rating || 0),
+              link: t.link,
+              openSource: Boolean(t.open_source),
+              priceTier: (t.price_tier || "freemium") as any,
+            }))
+          );
+        } else {
+          setCmsList(null);
+        }
+      } catch {
+        setCmsList(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const list = cmsList && cmsList.length > 0 ? cmsList : localList;
 
   const filteredTools = list.filter((tool) => {
     const matchesSearch =
@@ -26,12 +96,11 @@ export function ToolsList() {
       tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tool.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = selectedCategory === "全部" || tool.category === selectedCategory;
-    const full = toolsCatalog.find((x) => x.id === tool.id);
     const matchesPlatform =
       platformFilter === "全部" ||
-      ("开源" === platformFilter && Boolean(full?.openSource)) ||
-      ("商业" === platformFilter && !full?.openSource);
-    const tier = full?.priceTier || "freemium";
+      ("开源" === platformFilter && Boolean(tool.openSource)) ||
+      ("商业" === platformFilter && !tool.openSource);
+    const tier = tool.priceTier || "freemium";
     const tierLabel =
       "free" === tier ? "以免费为主" : "paid" === tier ? "多数付费" : "免费+增值";
     const matchesPrice = priceTierFilter === "全部" || tierLabel === priceTierFilter;
@@ -39,10 +108,7 @@ export function ToolsList() {
   });
 
   const compareHref = useMemo(() => {
-    const ids = filteredTools
-      .slice(0, 3)
-      .map((t) => t.id)
-      .join(",");
+    const ids = filteredTools.slice(0, 3).map((t: any) => t.id).join(",");
     return `/tools/compare?ids=${ids}`;
   }, [filteredTools]);
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api";
@@ -34,12 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
 
-  const refreshMe = async () => {
-    if (!state.accessToken) {
+  const accessTokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    accessTokenRef.current = state.accessToken;
+  }, [state.accessToken]);
+
+  const refreshMe = useCallback(async () => {
+    const token = accessTokenRef.current;
+    if (!token) {
       return;
     }
     try {
-      const result = await apiClient.getMe(state.accessToken);
+      const result = await apiClient.getMe(token);
       const tier = (result?.membership?.tier as MembershipTier) || "free";
       setState((prev) => ({
         ...prev,
@@ -47,18 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         membershipTier: ["free", "standard", "pro"].includes(tier) ? tier : "free",
         membershipEndsAt: result?.membership?.endAt || null,
       }));
-    } catch (_error) {
-      setState((prev) => ({
-        ...prev,
-        isPro: false,
-        membershipTier: "free",
-        membershipEndsAt: null,
-      }));
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (401 === status) {
+        setState((prev) => ({
+          ...prev,
+          isPro: false,
+          membershipTier: "free",
+          membershipEndsAt: null,
+        }));
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       const session = data.session;
       if (!session) {
         setState((prev) => ({ ...prev, loading: false }));
@@ -74,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }));
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         setState({
           userId: null,
@@ -88,15 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setState({
+      setState((prev) => ({
+        ...prev,
         userId: session.user.id,
         email: session.user.email || null,
-        isPro: false,
-        membershipTier: "free",
-        membershipEndsAt: null,
         accessToken: session.access_token,
         loading: false,
-      });
+      }));
     });
 
     return () => {
@@ -106,9 +113,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (state.accessToken) {
-      refreshMe();
+      void refreshMe();
     }
-  }, [state.accessToken]);
+  }, [state.accessToken, refreshMe]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -137,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshMe,
     }),
-    [state]
+    [state, refreshMe]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

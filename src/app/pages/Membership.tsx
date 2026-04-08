@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Check, Crown, Sparkles, Star } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { apiClient, ApiNetworkError } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ type PayChannel = "mock" | "alipay_pc" | "wechat_native";
 export function Membership() {
   const { userId, accessToken, refreshMe } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [processingPlan, setProcessingPlan] = useState<string>("");
   const [payChannel, setPayChannel] = useState<PayChannel>(
@@ -39,24 +41,39 @@ export function Membership() {
   const pollOrderUntilPaid = useCallback(
     (orderId: string) => {
       stopPoll();
-      if (!accessToken) {
-        return;
-      }
-      pollRef.current = setInterval(async () => {
+      let attempts = 0;
+      const maxAttempts = 150;
+
+      const tick = async () => {
+        attempts += 1;
+        if (attempts > maxAttempts) {
+          stopPoll();
+          return;
+        }
         try {
-          const row = await apiClient.getPaymentOrder(accessToken, orderId);
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          if (!token) {
+            return;
+          }
+          const row = await apiClient.getPaymentOrder(token, orderId);
           if (row.status === "paid") {
             stopPoll();
             setWechatDialogOpen(false);
             await refreshMe();
-            alert("支付成功，会员权益已开通");
+            navigate("/user", { replace: true });
           }
         } catch {
           /* 轮询失败时忽略，下次继续 */
         }
+      };
+
+      void tick();
+      pollRef.current = setInterval(() => {
+        void tick();
       }, 2000);
     },
-    [accessToken, refreshMe]
+    [refreshMe, navigate]
   );
 
   useEffect(() => {
@@ -119,9 +136,7 @@ export function Membership() {
       } else {
         const msg = (error as Error)?.message || "";
         if (msg.toLowerCase().includes("fetch") || msg.includes("网络")) {
-          alert(
-            "无法连接支付服务。请稍后重试，或按页面下方「支付自助排查」逐项核对；仍失败请联系客服并附上大致时间。"
-          );
+          alert("无法连接支付服务。请检查网络与接口域名配置，稍后重试或联系客服。");
         } else {
           alert(msg || "开通失败");
         }
@@ -474,7 +489,9 @@ export function Membership() {
           <DialogContent className="sm:max-w-md rounded-3xl">
             <DialogHeader>
               <DialogTitle>微信扫码支付</DialogTitle>
-              <DialogDescription>使用微信扫一扫完成付款，支付成功后本页将自动刷新会员状态。</DialogDescription>
+              <DialogDescription>
+                使用微信扫一扫完成付款；支付成功后将自动跳转个人中心（也可关闭弹窗后在会员页查看）。
+              </DialogDescription>
             </DialogHeader>
             {wechatCodeUrl ? (
               <div className="flex flex-col items-center gap-4 py-2">

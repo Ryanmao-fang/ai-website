@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api";
 import { tierMeetsMin } from "@/lib/membershipTier";
 import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
 import { listTermsSummary } from "@/content/termsCatalog";
+import { publicContentApi } from "@/lib/publicContentApi";
 
 export function TermsList() {
   const { accessToken, membershipTier } = useAuth();
@@ -18,9 +19,44 @@ export function TermsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [favoriteIdSet, setFavoriteIdSet] = useState<Set<string>>(new Set());
+  const [cmsTerms, setCmsTerms] = useState<{ slug: string; name: string; description: string; category: string; likes?: number }[] | null>(null);
 
   const categories = ["全部", "基础概念", "技术原理", "应用场景", "实用技能"];
-  const terms = listTermsSummary();
+  const localTerms = listTermsSummary();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const items = await publicContentApi.listTerms();
+        if (cancelled) {
+          return;
+        }
+        if (items && items.length > 0) {
+          setCmsTerms(
+            items.map((t) => ({
+              slug: t.slug,
+              name: t.name,
+              description: t.description,
+              category: t.category,
+              likes: 0,
+            }))
+          );
+        } else {
+          setCmsTerms(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setCmsTerms(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const terms = cmsTerms && cmsTerms.length > 0 ? cmsTerms : localTerms;
 
   useEffect(() => {
     let cancelled = false;

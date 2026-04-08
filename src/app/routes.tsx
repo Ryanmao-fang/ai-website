@@ -32,6 +32,15 @@ import { Referral } from "./pages/Referral";
 import { ToolsCompare } from "./pages/ToolsCompare";
 import { TermBySlug } from "./pages/TermBySlug";
 import { ToolBySlug } from "./pages/ToolBySlug";
+import { AdminGate } from "./pages/Admin";
+import { AdminTerms } from "./pages/admin/AdminTerms";
+import { AdminTools } from "./pages/admin/AdminTools";
+import { AdminTemplates } from "./pages/admin/AdminTemplates";
+import { AdminLearningPaths } from "./pages/admin/AdminLearningPaths";
+import { AdminAssets } from "./pages/admin/AdminAssets";
+import { AdminUsers } from "./pages/admin/AdminUsers";
+import { AdminOrders } from "./pages/admin/AdminOrders";
+import { AdminTickets } from "./pages/admin/AdminTickets";
 
 function StandardLearningPath() {
   return <LearningPath />;
@@ -136,6 +145,20 @@ export const router = createBrowserRouter([
       { path: "membership", Component: Membership },
       { path: "legal/user-agreement", Component: UserAgreement },
       { path: "legal/privacy-policy", Component: PrivacyPolicy },
+      {
+        path: "admin",
+        Component: AdminGate,
+        children: [
+          { path: "terms", Component: AdminTerms },
+          { path: "tools", Component: AdminTools },
+          { path: "templates", Component: AdminTemplates },
+          { path: "learning-paths", Component: AdminLearningPaths },
+          { path: "assets", Component: AdminAssets },
+          { path: "users", Component: AdminUsers },
+          { path: "orders", Component: AdminOrders },
+          { path: "tickets", Component: AdminTickets },
+        ],
+      },
       { path: "not-found", Component: NotFound },
       { path: "*", Component: NotFound },
     ],

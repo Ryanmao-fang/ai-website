@@ -1,4 +1,4 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
 
 export class ApiNetworkError extends Error {
   constructor(message: string) {
@@ -35,7 +35,9 @@ async function request(path: string, init?: RequestInit, token?: string) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const msg = (payload as { error?: string })?.error || `请求失败（${response.status}）`;
-    throw new Error(msg);
+    const err = new Error(msg) as Error & { status: number };
+    err.status = response.status;
+    throw err;
   }
   return payload;
 }
@@ -54,7 +56,7 @@ export const apiClient = {
     }
   ) => request("/api/payment/create-order", { method: "POST", body: JSON.stringify(body) }, token),
   getPaymentOrder: (token: string, orderId: string) =>
-    request(`/api/payment/order/${orderId}`, { method: "GET" }, token),
+    request(`/api/payment/order/${encodeURIComponent(orderId)}`, { method: "GET" }, token),
   getMyOrders: (token: string) => request("/api/payment/my-orders", { method: "GET" }, token),
 
   getLearningProgress: (token: string) => request("/api/learning/progress", { method: "GET" }, token),
