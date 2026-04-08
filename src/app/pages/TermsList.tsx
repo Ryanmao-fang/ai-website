@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Search, Heart } from "lucide-react";
 import { Input } from "../components/ui/input";
