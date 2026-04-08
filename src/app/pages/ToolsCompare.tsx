@@ -51,7 +51,7 @@ export function ToolsCompare() {
                 <li>适合：{t.suitableFor || "—"}</li>
               </ul>
               {userId ? (
-                <Link to={`/tools/${t.id}`} className="text-sm text-primary hover:underline">
+                <Link to={`/tool/${t.slug}`} className="text-sm text-primary hover:underline">
                   打开详情 →
                 </Link>
               ) : (

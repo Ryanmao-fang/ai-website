@@ -162,7 +162,7 @@ export function ToolsList() {
                   </a>
                 </div>
 
-                <Link to={`/tools/${tool.id}`}>
+                <Link to={`/tool/${tool.slug}`}>
                   <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                     {tool.name}
                   </h3>
@@ -192,7 +192,7 @@ export function ToolsList() {
                   ))}
                 </div>
 
-                <Link to={`/tools/${tool.id}`}>
+                <Link to={`/tool/${tool.slug}`}>
                   <Button variant="outline" className="w-full rounded-full border-border">
                     查看详情
                   </Button>

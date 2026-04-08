@@ -46,7 +46,7 @@ export function searchAllContent(rawQuery: string): SearchResults {
   const terms = termsCatalog
     .filter((t) => {
       const hay = normalize(
-        `${t.name} ${t.description} ${t.category} ${t.aliases.join(" ")}`
+        `${t.slug} ${t.name} ${t.description} ${t.category} ${t.aliases.join(" ")}`
       );
       return hay.includes(q);
     })
@@ -60,7 +60,9 @@ export function searchAllContent(rawQuery: string): SearchResults {
 
   const tools = toolsCatalog
     .filter((t) => {
-      const hay = normalize(`${t.name} ${t.description} ${t.category} ${t.tags.join(" ")}`);
+      const hay = normalize(
+        `${t.slug} ${t.name} ${t.description} ${t.category} ${t.tags.join(" ")}`
+      );
       return hay.includes(q);
     })
     .map((t) => ({

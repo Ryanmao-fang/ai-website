@@ -6,18 +6,22 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
+import { useLoginDialog } from "../context/LoginDialogContext";
 import { tierMeetsMin } from "@/lib/membershipTier";
 import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
-import { getTermById, termsCatalog } from "@/content/termsCatalog";
+import { ContentLock, ContentLockInline } from "../components/ContentLock";
+import { getTermById, getTermBySlug, termsCatalog } from "@/content/termsCatalog";
 import { recordBrowseEntry } from "@/lib/browseHistory";
 import { apiClient } from "@/lib/api";
 import { PageMeta } from "../components/PageMeta";
 
 export function TermDetail() {
   const { id } = useParams();
-  const term = getTermById(id);
-  const { membershipTier, accessToken } = useAuth();
+  const term = getTermById(id) || getTermBySlug(id);
+  const { membershipTier, accessToken, userId } = useAuth();
+  const { openLogin } = useLoginDialog();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const showFullContent = Boolean(userId);
   const [isFavorite, setIsFavorite] = useState(false);
   const [shareHint, setShareHint] = useState("");
   const [helpfulStats, setHelpfulStats] = useState<{ yes: number; no: number } | null>(null);
@@ -81,6 +85,7 @@ export function TermDetail() {
       return;
     }
     if (!accessToken) {
+      openLogin();
       return;
     }
     if (!tierMeetsMin(membershipTier, "standard")) {
@@ -195,7 +200,8 @@ export function TermDetail() {
                 <Heart
                   className={`w-4 h-4 mr-2 ${isFavorite ? "fill-white" : ""}`}
                 />
-                {isFavorite ? "已收藏" : "收藏"}（{term.likes} 人喜欢）
+                {!userId ? "登录后收藏" : isFavorite ? "已收藏" : "收藏"}
+                {userId ? `（${term.likes} 人喜欢）` : ""}
               </Button>
               <Button
                 type="button"
@@ -208,6 +214,25 @@ export function TermDetail() {
               </Button>
             </div>
             {shareHint ? <p className="text-sm text-muted-foreground mt-2">{shareHint}</p> : null}
+            {!showFullContent ? (
+              <p className="text-xs text-muted-foreground mt-3">
+                未登录访客可免费阅读「简单解释」与部分示例；登录后解锁举例全文、参考链接与评价。
+              </p>
+            ) : null}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+          >
+            <Card className="rounded-3xl border-border p-8 mb-8 bg-gradient-to-br from-primary/5 to-accent/5">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-semibold text-foreground">简单解释</h2>
+              </div>
+              <p className="text-foreground leading-relaxed text-lg">{term.simpleExplanation}</p>
+            </Card>
           </motion.div>
 
           <motion.div
@@ -216,40 +241,49 @@ export function TermDetail() {
             transition={{ delay: 0.15 }}
             className="mb-8"
           >
-            <Card className="rounded-3xl border-border p-6 bg-white">
-              <p className="text-sm font-medium text-foreground mb-3">这篇内容有帮助吗？</p>
-              <div className="flex flex-wrap gap-2 items-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-border"
-                  onClick={() => void postHelpful(true)}
-                >
-                  <ThumbsUp className="w-4 h-4 mr-1" />
-                  有帮助
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-border"
-                  onClick={() => void postHelpful(false)}
-                >
-                  <ThumbsDown className="w-4 h-4 mr-1" />
-                  需改进
-                </Button>
-                {helpfulStats ? (
-                  <span className="text-xs text-muted-foreground">
-                    反馈统计：有帮助 {helpfulStats.yes} · 待改进 {helpfulStats.no}
-                  </span>
-                ) : null}
-              </div>
-              {feedbackHint ? <p className="text-xs text-muted-foreground mt-2">{feedbackHint}</p> : null}
-            </Card>
+            {showFullContent ? (
+              <Card className="rounded-3xl border-border p-6 bg-white">
+                <p className="text-sm font-medium text-foreground mb-3">这篇内容有帮助吗？</p>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full border-border"
+                    onClick={() => void postHelpful(true)}
+                  >
+                    <ThumbsUp className="w-4 h-4 mr-1" />
+                    有帮助
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full border-border"
+                    onClick={() => void postHelpful(false)}
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-1" />
+                    需改进
+                  </Button>
+                  {helpfulStats ? (
+                    <span className="text-xs text-muted-foreground">
+                      反馈统计：有帮助 {helpfulStats.yes} · 待改进 {helpfulStats.no}
+                    </span>
+                  ) : null}
+                </div>
+                {feedbackHint ? <p className="text-xs text-muted-foreground mt-2">{feedbackHint}</p> : null}
+              </Card>
+            ) : (
+              <ContentLockInline
+                unlocked={false}
+                message="登录后可提交「有帮助 / 需改进」，帮助我们改进词条。"
+                actionLabel="去登录"
+                onAction={() => openLogin()}
+              />
+            )}
           </motion.div>
 
-          {term.references && term.references.length > 0 ? (
+          {showFullContent && term.references && term.references.length > 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -272,55 +306,79 @@ export function TermDetail() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="rounded-3xl border-border p-8 mb-8 bg-gradient-to-br from-primary/5 to-accent/5">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">简单解释</h2>
-              </div>
-              <p className="text-foreground leading-relaxed text-lg">{term.simpleExplanation}</p>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.22 }}
             className="mb-8"
           >
             <h2 className="text-2xl font-semibold text-foreground mb-6">举例说明</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {term.examples.map((example, index) => (
-                <Card
-                  key={index}
-                  className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                    <BookOpen className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-2">{example.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{example.content}</p>
-                </Card>
-              ))}
-            </div>
+            {showFullContent ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {term.examples.map((example, index) => (
+                  <Card
+                    key={index}
+                    className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                      <BookOpen className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-2">{example.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{example.content}</p>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {term.examples.slice(0, 1).map((example, index) => (
+                    <Card
+                      key={index}
+                      className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                        <BookOpen className="w-6 h-6 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-foreground mb-2">{example.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{example.content}</p>
+                    </Card>
+                  ))}
+                </div>
+                {term.examples.length > 1 ? (
+                  <ContentLock
+                    unlocked={false}
+                    message={`还有 ${term.examples.length - 1} 个示例与详解，登录后即可阅读。`}
+                    actionLabel="登录 / 注册"
+                    onAction={() => openLogin()}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-0 h-40" aria-hidden>
+                      {term.examples.slice(1).map((example, index) => (
+                        <Card key={index} className="rounded-3xl border-border p-6 bg-white">
+                          <h3 className="font-semibold text-foreground mb-2">{example.title}</h3>
+                          <p className="text-muted-foreground leading-relaxed">{example.content}</p>
+                        </Card>
+                      ))}
+                    </div>
+                  </ContentLock>
+                ) : null}
+              </>
+            )}
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-12"
-          >
-            <h2 className="text-2xl font-semibold text-foreground mb-4">内容纠错</h2>
-            <Card className="rounded-3xl border-border p-6 bg-white text-sm text-muted-foreground leading-relaxed">
-              发现事实错误或过时表述？请通过
-              <Link to="/feedback" className="text-primary hover:underline mx-1">
-                意见反馈
-              </Link>
-              附上词条名称与参考资料链接，我们会在审核后更新。
-            </Card>
-          </motion.div>
+          {showFullContent ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.32 }}
+              className="mb-12"
+            >
+              <h2 className="text-2xl font-semibold text-foreground mb-4">内容纠错</h2>
+              <Card className="rounded-3xl border-border p-6 bg-white text-sm text-muted-foreground leading-relaxed">
+                发现事实错误或过时表述？请通过
+                <Link to="/feedback" className="text-primary hover:underline mx-1">
+                  意见反馈
+                </Link>
+                附上词条名称与参考资料链接，我们会在审核后更新。
+              </Card>
+            </motion.div>
+          ) : null}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -330,7 +388,7 @@ export function TermDetail() {
             <h2 className="text-2xl font-semibold text-foreground mb-6">延伸阅读</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {relatedTerms.map((relatedTerm) => (
-                <Link key={relatedTerm.id} to={`/terms/${relatedTerm.id}`}>
+                <Link key={relatedTerm.id} to={`/term/${relatedTerm.slug}`}>
                   <Card className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-all group">
                     <Badge className="rounded-full bg-accent/20 text-accent-foreground border-0 mb-3">
                       {relatedTerm.category}

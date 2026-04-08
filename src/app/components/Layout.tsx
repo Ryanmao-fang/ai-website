@@ -5,6 +5,7 @@ import { Footer } from "./Footer";
 import { LoginDialogProvider, useLoginDialog } from "../context/LoginDialogContext";
 import { SkipLink } from "./SkipLink";
 import { siteConfig } from "@/lib/siteConfig";
+import { RouteErrorBoundary } from "./RouteErrorBoundary";
 
 function OpenLoginFromRouteState() {
   const location = useLocation();
@@ -58,7 +59,9 @@ function LayoutInner() {
       <AnnouncementBar />
       <Navbar />
       <main id="main-content" className="flex-1" tabIndex={-1}>
-        <Outlet />
+        <RouteErrorBoundary>
+          <Outlet />
+        </RouteErrorBoundary>
       </main>
       <Footer />
     </div>

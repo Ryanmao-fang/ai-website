@@ -8,7 +8,7 @@ export function Footer() {
   const { userId } = useAuth();
   const { openLogin } = useLoginDialog();
 
-  const productPaths = ["/terms", "/tools", "/learning-path", "/templates"];
+  const productPaths = ["/learning-path", "/templates"];
   const authOnlyPaths = ["/support/tickets"];
 
   const footerLinks = {

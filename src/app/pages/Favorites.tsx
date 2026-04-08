@@ -118,12 +118,17 @@ export function Favorites() {
           <div className="space-y-3">
             {items.map((row, index) => {
               const meta = resolveTitle(row.target_type, row.target_id);
-              const href =
-                "term" === row.target_type
-                  ? `/terms/${row.target_id}`
-                  : "tool" === row.target_type
-                    ? `/tools/${row.target_id}`
-                    : `/templates`;
+              const href = (() => {
+                if ("term" === row.target_type) {
+                  const t = getTermById(row.target_id);
+                  return t ? `/term/${t.slug}` : `/terms/${row.target_id}`;
+                }
+                if ("tool" === row.target_type) {
+                  const t = getToolById(row.target_id);
+                  return t ? `/tool/${t.slug}` : `/tools/${row.target_id}`;
+                }
+                return "/templates";
+              })();
               return (
                 <motion.div
                   key={row.id}

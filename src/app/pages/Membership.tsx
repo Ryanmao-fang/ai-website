@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Check, Crown, Sparkles, Star, LifeBuoy } from "lucide-react";
+import { Check, Crown, Sparkles, Star } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -267,43 +267,6 @@ export function Membership() {
               微信扫码
             </Button>
           </div>
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            生产环境请在后端设置 PAYMENT_MODE=production 并配置商户密钥；本地开发可用「本地模拟」。
-            微信扫码支付需在拿到微信商户号、密钥并完成公网回调配置后启用；未配置前建议使用支付宝。
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
-          className="max-w-3xl mx-auto mb-10"
-        >
-          <Card className="rounded-3xl border-border p-6 bg-white">
-            <div className="flex items-start gap-3">
-              <LifeBuoy className="w-6 h-6 text-primary shrink-0 mt-0.5" />
-              <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
-                <p className="font-medium text-foreground">支付自助排查</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>网站环境变量中的接口地址是否为当前正在使用的 API 域名；修改后需重新部署前端。</li>
-                  <li>浏览器是否拦截弹窗（支付宝表单会先打开新窗口）。</li>
-                  <li>后端服务是否已重启；服务器安全组是否放行 443。</li>
-                  <li>微信支付需商户平台回调 URL 公网可达；未完成前请改用支付宝或本地模拟。</li>
-                </ol>
-                <p>
-                  需要协助请
-                  <Link to="/contact" className="text-primary hover:underline mx-1">
-                    联系客服
-                  </Link>
-                  、登录后提交
-                  <Link to="/support/tickets" className="text-primary hover:underline mx-1">
-                    工单
-                  </Link>
-                  或发邮件说明时间与账号。一般工作日 24h 内首次响应（高峰可能延长）；紧急支付失败请同时附上订单号截屏。
-                </p>
-              </div>
-            </div>
-          </Card>
         </motion.div>
 
         {/* Billing Toggle */}

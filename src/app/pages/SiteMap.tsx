@@ -12,9 +12,9 @@ const groups: { title: string; links: LinkItem[] }[] = [
     links: [
       { name: "首页", path: "/" },
       { name: "内容导览", path: "/explore" },
-      { name: "AI 名词", path: "/terms", needsLogin: true },
-      { name: "工具库", path: "/tools", needsLogin: true },
-      { name: "学习路线", path: "/learning-path", needsLogin: true },
+      { name: "AI 名词", path: "/terms" },
+      { name: "工具库", path: "/tools" },
+      { name: "学习路线", path: "/learning-path" },
       { name: "模板库", path: "/templates", needsLogin: true },
       { name: "全站搜索", path: "/search" },
       { name: "工具对比", path: "/tools/compare" },

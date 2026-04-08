@@ -81,11 +81,7 @@ export function Home() {
       navigate(`/search?q=${encodeURIComponent(q)}`);
       return;
     }
-    if (!userId) {
-      openLogin();
-    } else {
-      navigate("/terms");
-    }
+    navigate("/explore");
   };
 
   return (
@@ -150,19 +146,12 @@ export function Home() {
               <h2 className="text-3xl font-semibold text-foreground mb-2">热门名词</h2>
               <p className="text-muted-foreground">从基础概念开始，轻松入门AI</p>
             </div>
-            {!userId ? (
-              <Button variant="ghost" className="rounded-full" onClick={() => openLogin()}>
+            <Link to="/terms">
+              <Button variant="ghost" className="rounded-full">
                 查看全部
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            ) : (
-              <Link to="/terms">
-                <Button variant="ghost" className="rounded-full">
-                  查看全部
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            )}
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {featuredTerms.map((term, index) => (
@@ -172,23 +161,7 @@ export function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
               >
-                {!userId ? (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openLogin()}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openLogin();
-                      }
-                    }}
-                  >
-                    {termCard(term, index)}
-                  </div>
-                ) : (
-                  <Link to={`/terms/${term.id}`}>{termCard(term, index)}</Link>
-                )}
+                <Link to={`/term/${term.slug}`}>{termCard(term, index)}</Link>
               </motion.div>
             ))}
           </div>
@@ -202,19 +175,12 @@ export function Home() {
               <h2 className="text-3xl font-semibold text-foreground mb-2">精选工具</h2>
               <p className="text-muted-foreground">发现最好用的AI工具，提升工作效率</p>
             </div>
-            {!userId ? (
-              <Button variant="ghost" className="rounded-full" onClick={() => openLogin()}>
+            <Link to="/tools">
+              <Button variant="ghost" className="rounded-full">
                 查看全部
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            ) : (
-              <Link to="/tools">
-                <Button variant="ghost" className="rounded-full">
-                  查看全部
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            )}
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredTools.map((tool, index) => (
@@ -224,23 +190,7 @@ export function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
               >
-                {!userId ? (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openLogin()}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openLogin();
-                      }
-                    }}
-                  >
-                    {toolCard(tool, index)}
-                  </div>
-                ) : (
-                  <Link to={`/tools/${tool.id}`}>{toolCard(tool, index)}</Link>
-                )}
+                <Link to={`/tool/${tool.slug}`}>{toolCard(tool, index)}</Link>
               </motion.div>
             ))}
           </div>
@@ -261,57 +211,30 @@ export function Home() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
               >
-                {!userId ? (
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    onClick={() => openLogin()}
-                  >
-                    <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-8 text-center group cursor-pointer">
-                      <div className="text-5xl mb-4">{path.icon}</div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">{path.level}</h3>
-                      <p className="text-muted-foreground mb-4">{path.items} 个学习内容</p>
-                      <Badge className={`rounded-full ${path.color} border-0`}>
-                        {path.level === "入门" && "从零开始"}
-                        {path.level === "进阶" && "深入理解"}
-                        {path.level === "高阶" && "融会贯通"}
-                      </Badge>
-                    </Card>
-                  </button>
-                ) : (
-                  <Link to={`/learning-path#${path.level === "入门" ? "beginner" : path.level === "进阶" ? "intermediate" : "advanced"}`}>
-                    <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-8 text-center group cursor-pointer">
-                      <div className="text-5xl mb-4">{path.icon}</div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">{path.level}</h3>
-                      <p className="text-muted-foreground mb-4">{path.items} 个学习内容</p>
-                      <Badge className={`rounded-full ${path.color} border-0`}>
-                        {path.level === "入门" && "从零开始"}
-                        {path.level === "进阶" && "深入理解"}
-                        {path.level === "高阶" && "融会贯通"}
-                      </Badge>
-                    </Card>
-                  </Link>
-                )}
+                <Link
+                  to={`/learning-path#${path.level === "入门" ? "beginner" : path.level === "进阶" ? "intermediate" : "advanced"}`}
+                >
+                  <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-8 text-center group cursor-pointer">
+                    <div className="text-5xl mb-4">{path.icon}</div>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">{path.level}</h3>
+                    <p className="text-muted-foreground mb-4">{path.items} 个学习内容</p>
+                    <Badge className={`rounded-full ${path.color} border-0`}>
+                      {path.level === "入门" && "从零开始"}
+                      {path.level === "进阶" && "深入理解"}
+                      {path.level === "高阶" && "融会贯通"}
+                    </Badge>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>
           <div className="text-center">
-            {!userId ? (
-              <Button
-                className="rounded-full bg-primary hover:bg-accent px-8 h-12"
-                onClick={() => openLogin()}
-              >
+            <Link to="/learning-path">
+              <Button className="rounded-full bg-primary hover:bg-accent px-8 h-12">
                 <TrendingUp className="w-5 h-5 mr-2" />
                 查看完整学习路线
               </Button>
-            ) : (
-              <Link to="/learning-path">
-                <Button className="rounded-full bg-primary hover:bg-accent px-8 h-12">
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  查看完整学习路线
-                </Button>
-              </Link>
-            )}
+            </Link>
           </div>
         </div>
       </section>

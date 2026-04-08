@@ -7,13 +7,9 @@ import { Button } from "../components/ui/button";
 import { termsCatalog } from "@/content/termsCatalog";
 import { toolsCatalog } from "@/content/toolsCatalog";
 import { PageMeta } from "../components/PageMeta";
-import { useAuth } from "../context/AuthContext";
-import { useLoginDialog } from "../context/LoginDialogContext";
 
 /** 未登录用户可浏览的内容导览（与详情页登录门槛配合） */
 export function Explore() {
-  const { userId } = useAuth();
-  const { openLogin } = useLoginDialog();
   const showTerms = termsCatalog.slice(0, 6);
   const showTools = toolsCatalog.slice(0, 6);
 
@@ -33,17 +29,11 @@ export function Explore() {
             </div>
             <h1 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">先了解，再注册</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              以下为站内词条与工具摘要。要阅读全文、使用收藏与路线进度，请先
-              {userId ? (
-                <Link to="/terms" className="text-primary hover:underline mx-1">
-                  进入名词库
-                </Link>
-              ) : (
-                <button type="button" className="text-primary hover:underline mx-1" onClick={() => openLogin()}>
-                  登录
-                </button>
-              )}
-              。
+              以下为站内词条与工具摘要。可直接
+              <Link to="/terms" className="text-primary hover:underline mx-1">
+                进入名词库
+              </Link>
+              或通过上方搜索查找；收藏保存与学习进度同步需在登录后使用会员功能。
             </p>
             <div className="mt-6 flex flex-wrap gap-3 justify-center">
               <Link to="/search">
@@ -67,15 +57,9 @@ export function Explore() {
                   <Badge className="rounded-full bg-primary/10 text-primary border-0 mb-2">{t.category}</Badge>
                   <h3 className="font-semibold text-foreground mb-2">{t.name}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{t.description}</p>
-                  {userId ? (
-                    <Link to={`/terms/${t.id}`} className="text-sm text-primary hover:underline">
-                      查看全文 →
-                    </Link>
-                  ) : (
-                    <button type="button" className="text-sm text-primary hover:underline" onClick={() => openLogin()}>
-                      登录后查看全文 →
-                    </button>
-                  )}
+                  <Link to={`/term/${t.slug}`} className="text-sm text-primary hover:underline">
+                    查看全文 →
+                  </Link>
                 </Card>
               </motion.div>
             ))}
@@ -99,15 +83,9 @@ export function Explore() {
                     {t.suitableFor ? (
                       <p className="text-xs text-muted-foreground mb-2">适合：{t.suitableFor}</p>
                     ) : null}
-                    {userId ? (
-                      <Link to={`/tools/${t.id}`} className="text-sm text-primary hover:underline">
-                        查看详情 →
-                      </Link>
-                    ) : (
-                      <button type="button" className="text-sm text-primary hover:underline" onClick={() => openLogin()}>
-                        登录后查看详情 →
-                      </button>
-                    )}
+                    <Link to={`/tool/${t.slug}`} className="text-sm text-primary hover:underline">
+                      查看详情 →
+                    </Link>
                   </div>
                 </Card>
               </motion.div>

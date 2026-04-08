@@ -11,6 +11,8 @@ import { apiClient } from "@/lib/api";
 import { listBrowseHistory, formatBrowseTime } from "@/lib/browseHistory";
 import { learningPathSections } from "@/content/learningPathConfig";
 import { countCompletedInLevel } from "@/lib/learningProgress";
+import { getTermById } from "@/content/termsCatalog";
+import { getToolById } from "@/content/toolsCatalog";
 
 export function UserCenter() {
   const { email, membershipTier, signOut, accessToken } = useAuth();
@@ -85,10 +87,12 @@ export function UserCenter() {
 
   const resolveRecentLink = (item: (typeof recentViewed)[0]) => {
     if ("term" === item.type) {
-      return `/terms/${item.id}`;
+      const t = getTermById(String(item.id));
+      return t ? `/term/${t.slug}` : `/terms/${item.id}`;
     }
     if ("tool" === item.type) {
-      return `/tools/${item.id}`;
+      const t = getToolById(String(item.id));
+      return t ? `/tool/${t.slug}` : `/tools/${item.id}`;
     }
     return `/templates#t-${item.id}`;
   };

@@ -6,7 +6,10 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
+import { useLoginDialog } from "../context/LoginDialogContext";
+import { tierMeetsMin } from "@/lib/membershipTier";
 import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
+import { ContentLockInline } from "../components/ContentLock";
 import { apiClient, ApiNetworkError } from "@/lib/api";
 import {
   learningPathSections,
@@ -23,7 +26,8 @@ import {
 } from "@/lib/learningProgress";
 
 export function LearningPath() {
-  const { membershipTier, accessToken } = useAuth();
+  const { membershipTier, accessToken, userId } = useAuth();
+  const { openLogin } = useLoginDialog();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const location = useLocation();
   const [selectedLevel, setSelectedLevel] = useState<LearningPathLevelId>("beginner");
@@ -90,10 +94,12 @@ export function LearningPath() {
 
   const getItemLink = (type: string, id: number) => {
     if ("term" === type) {
-      return `/terms/${id}`;
+      const t = getTermById(String(id));
+      return t ? `/term/${t.slug}` : `/terms/${id}`;
     }
     if ("tool" === type) {
-      return `/tools/${id}`;
+      const t = getToolById(String(id));
+      return t ? `/tool/${t.slug}` : `/tools/${id}`;
     }
     return `/templates#t-${id}`;
   };
@@ -111,7 +117,15 @@ export function LearningPath() {
     return <Sparkles className="w-5 h-5" />;
   };
 
-  const completedCount = countCompletedInLevel(selectedLevel, currentSection.items);
+  const canAccessLevel = (id: LearningPathLevelId): boolean => {
+    return "beginner" === id || tierMeetsMin(membershipTier, "standard");
+  };
+
+  const levelAllowed = canAccessLevel(selectedLevel);
+
+  const completedCount = levelAllowed
+    ? countCompletedInLevel(selectedLevel, currentSection.items)
+    : 0;
   const total = currentSection.items.length;
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
@@ -161,7 +175,7 @@ export function LearningPath() {
           >
             <h1 className="text-4xl font-semibold text-foreground mb-4">学习路线</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              循序渐进，系统掌握 AI 知识；登录后勾选可与账号云端同步（需部署学习进度表），未登录或离线时仍使用本机缓存。
+              「入门」阶段对外完全开放；「进阶 / 高级」章节需进阶会员解锁。登录后勾选可与云端同步（需部署学习进度表），未登录时进度仅存本机。
             </p>
           </motion.div>
 
@@ -200,9 +214,16 @@ export function LearningPath() {
                         <p className="text-sm text-muted-foreground mb-2">
                           {section.items.length} 个学习内容
                         </p>
-                        {isSelected ? (
-                          <Badge className="rounded-full bg-primary text-white border-0">当前选择</Badge>
-                        ) : null}
+                        <div className="flex flex-wrap gap-2 justify-center mt-2">
+                          {isSelected ? (
+                            <Badge className="rounded-full bg-primary text-white border-0">当前选择</Badge>
+                          ) : null}
+                          {!canAccessLevel(section.id) ? (
+                            <Badge variant="secondary" className="rounded-full border-0 text-xs">
+                              进阶会员起
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
                     </Card>
                   </button>
@@ -229,8 +250,28 @@ export function LearningPath() {
               </div>
             </Card>
 
+            {!levelAllowed ? (
+              <ContentLockInline
+                unlocked={false}
+                message={
+                  userId
+                    ? "进阶与高级路线为进阶会员专享，开通后可逐项打开链接、勾选完成度并云端同步。"
+                    : "「入门」路线任意浏览；查看进阶/高级完整目录并同步进度请先登录，解锁全部需进阶会员。"
+                }
+                actionLabel={userId ? "了解会员方案" : "登录 / 注册"}
+                onAction={() => {
+                  if (userId) {
+                    setUpgradeOpen(true);
+                  } else {
+                    openLogin();
+                  }
+                }}
+              />
+            ) : null}
+
             <div className="space-y-4">
-              {currentSection.items.map((item, index) => {
+              {levelAllowed
+                ? currentSection.items.map((item, index) => {
                 const title = resolveTitle(item.type, item.id);
                 const desc = resolveDescription(item.type, item.id);
                 const completed = isPathItemCompleted(selectedLevel, item.type, item.id);
@@ -295,6 +336,10 @@ export function LearningPath() {
                           size="sm"
                           className="rounded-full shrink-0 border-border"
                           onClick={() => {
+                            if (!userId) {
+                              openLogin();
+                              return;
+                            }
                             const next = !completed;
                             togglePathItemCompleted(selectedLevel, item.type, item.id, next);
                             bumpProgress();
@@ -322,9 +367,11 @@ export function LearningPath() {
                     </Card>
                   </motion.div>
                 );
-              })}
+              })
+                : null}
             </div>
 
+            {levelAllowed ? (
             <Card className="rounded-3xl border-border p-8 mt-8 bg-white">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">学习进度</h3>
@@ -339,6 +386,7 @@ export function LearningPath() {
                 />
               </div>
             </Card>
+            ) : null}
 
             <Card className="rounded-3xl border-border p-8 mt-10 bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
               <div className="flex flex-wrap items-center gap-2 mb-2">

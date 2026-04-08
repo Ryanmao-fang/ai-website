@@ -5,6 +5,8 @@ export type TermExample = {
 
 export type TermRecord = {
   id: number;
+  /** 可读 URL 片段，对应文档中的 /term/[slug] */
+  slug: string;
   name: string;
   description: string;
   category: string;
@@ -27,6 +29,7 @@ const unsplash = (id: string) =>
 export const termsCatalog: TermRecord[] = [
   {
     id: 1,
+    slug: "llm",
     name: "大语言模型 (LLM)",
     description: "Large Language Model：基于深度学习的自然语言处理模型，能读会写、推理与对话。",
     category: "基础概念",
@@ -69,6 +72,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 2,
+    slug: "neural-network",
     name: "神经网络",
     description: "由多层神经元连接构成的计算结构，是深度学习的核心载体。",
     category: "技术原理",
@@ -88,6 +92,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 3,
+    slug: "prompt-engineering",
     name: "Prompt Engineering",
     description: "通过措辞、结构与示例，引导模型稳定输出高质量结果的方法论。",
     category: "实用技能",
@@ -107,6 +112,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 4,
+    slug: "machine-learning",
     name: "机器学习",
     description: "让系统从数据中学习规律，并在新样本上泛化预测或决策。",
     category: "基础概念",
@@ -126,6 +132,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 5,
+    slug: "deep-learning",
     name: "深度学习",
     description: "以多层神经网络表示复杂函数，适合图像、语音、文本等高维数据。",
     category: "技术原理",
@@ -145,6 +152,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 6,
+    slug: "nlp",
     name: "自然语言处理",
     description: "使计算机理解、生成与加工人类语言文字的技术集合。",
     category: "应用场景",
@@ -164,6 +172,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 7,
+    slug: "computer-vision",
     name: "计算机视觉",
     description: "让机器从图像或视频中理解与重建视觉世界。",
     category: "应用场景",
@@ -183,6 +192,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 8,
+    slug: "reinforcement-learning",
     name: "强化学习",
     description: "智能体在环境中通过试错与奖励信号学习长期最优策略。",
     category: "技术原理",
@@ -202,6 +212,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 9,
+    slug: "fine-tuning",
     name: "Fine-tuning",
     description: "在通用预训练模型之上，用领域数据继续训练以适配任务。",
     category: "实用技能",
@@ -221,6 +232,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 10,
+    slug: "token",
     name: "Token",
     description: "模型处理文本时的最小有意义的切分单位，计费与长度限制常以 Token 计。",
     category: "基础概念",
@@ -240,6 +252,7 @@ export const termsCatalog: TermRecord[] = [
   },
   {
     id: 11,
+    slug: "rag",
     name: "RAG检索增强生成",
     description: "检索外部知识片段拼入提示词，再让模型基于证据生成答案。",
     category: "技术原理",
@@ -255,10 +268,11 @@ export const termsCatalog: TermRecord[] = [
       { title: "混合检索", content: "关键词 + 向量提升召回。" },
       { title: "数据更新", content: "资料入库即可更新回答，无需整模重训。" },
     ],
-    relatedTermIds: [1, 6, 9],
+    relatedTermIds: [1, 6, 9, 17],
   },
   {
     id: 12,
+    slug: "few-shot-learning",
     name: "Few-shot Learning",
     description: "仅通过少量示例教会模型完成新任务提示或轻量适配。",
     category: "实用技能",
@@ -276,9 +290,172 @@ export const termsCatalog: TermRecord[] = [
     ],
     relatedTermIds: [3, 1, 9],
   },
+  {
+    id: 13,
+    slug: "generative-ai",
+    name: "生成式 AI",
+    description: "学习数据分布并采样新内容（文本、图像、代码等）的模型与应用形态。",
+    category: "基础概念",
+    likes: 1980,
+    readingMinutes: 6,
+    aliases: ["Generative AI", "AIGC", "生成式人工智能"],
+    image: unsplash("photo-1677442136019-21780ecad995"),
+    simpleExplanation:
+      "与「只分类、只打分」的判别式模型不同，生成式模型更像「会动笔的创作引擎」：给出提示即可续写、画图或合成语音。常见代表包括大语言模型与扩散模型。" ,
+    examples: [
+      { title: "文本创作", content: "营销文案、邮件、摘要与多语言改写。" },
+      { title: "图像/视频", content: "文生图、图生视频与风格探索（注意版权与平台规则）。" },
+      { title: "代码辅助", content: "从注释生成函数、补全测试与解释报错。" },
+      { title: "合规要点", content: "显式标注 AI 生成内容，涉事实与引用需人工核对。" },
+    ],
+    relatedTermIds: [1, 5, 14],
+  },
+  {
+    id: 14,
+    slug: "transformer",
+    name: "Transformer",
+    description: "以自注意力为核心的序列建模结构，是现代大语言模型的基石。",
+    category: "技术原理",
+    likes: 2100,
+    readingMinutes: 8,
+    aliases: ["转换器", "Attention Is All You Need"],
+    image: unsplash("photo-1620726064955-a0ac31e04b2c"),
+    simpleExplanation:
+      "Transformer 把整段序列同时「看齐」：每个位置通过注意力权重决定该听哪些词，从而捕捉长距离依赖；encoder-decoder、decoder-only（如 GPT）等变体适用于不同任务。" ,
+    examples: [
+      { title: "并行训练", content: "相对 RNN 更易在 GPU 上堆叠层数与宽度。" },
+      { title: "位置编码", content: "显式告诉模型词序信息。" },
+      { title: "缩放定律", content: "参数、数据与算力提升常带来可预测的指标改善。" },
+      { title: "工程权衡", content: "上下文长度、稀疏注意力与 KV Cache 影响延迟与成本。" },
+    ],
+    relatedTermIds: [15, 16, 1],
+  },
+  {
+    id: 15,
+    slug: "gpt",
+    name: "GPT",
+    description: "Generative Pre-trained Transformer：以自回归方式预测下一 Token 的生成式语言模型家族。",
+    category: "技术原理",
+    likes: 2450,
+    readingMinutes: 7,
+    aliases: ["GPT-4", "ChatGPT", "生成式预训练 Transformer"],
+    image: unsplash("photo-1655720824885-dab54f61b44a"),
+    simpleExplanation:
+      "GPT 先在海量文本上做自监督预训练，再经指令微调与安全对齐，便于对话与工具使用。能力边界受训练数据截止时间、幻觉与上下文长度共同约束。" ,
+    examples: [
+      { title: "对话与工具", content: "函数调用、插件与检索可增强事实性。" },
+      { title: "提示技巧", content: "角色、步骤与输出格式能显著稳定结果。" },
+      { title: "多模态扩展", content: "部分版本支持图像输入与语音。" },
+      { title: "对比 BERT", content: "BERT 偏理解编码；GPT 偏从左到右生成。" },
+    ],
+    relatedTermIds: [1, 14, 3],
+  },
+  {
+    id: 16,
+    slug: "attention-mechanism",
+    name: "注意力机制",
+    description: "按查询–键–值三元组动态加权聚合信息的可学习对齐方式。",
+    category: "技术原理",
+    likes: 1320,
+    readingMinutes: 6,
+    aliases: ["Attention", "Self-Attention"],
+    image: unsplash("photo-1504639725590-34d0984388bd"),
+    simpleExplanation:
+      "可把注意力理解成「软性的指针」：每个查询向量看看所有键有多匹配，再把值向量按权重求和。多头注意力并行多套子空间，提升表达力。" ,
+    examples: [
+      { title: "翻译对齐", content: "早期可视化显示源词与目标词的对应关系。" },
+      { title: "长文本", content: "全连接注意力复杂度随长度平方增长，长上下文需稀疏化或线性注意力等改进。" },
+      { title: "交叉注意力", content: "decoder 查阅 encoder 输出，用于编码–解码架构。" },
+      { title: "与 RAG", content: "检索到的片段也可作为被注意的外部记忆。" },
+    ],
+    relatedTermIds: [14, 1, 11],
+  },
+  {
+    id: 17,
+    slug: "vector-database",
+    name: "向量数据库",
+    description: "存储与检索高维向量（嵌入）的专用系统，服务于相似度搜索与 RAG。",
+    category: "技术原理",
+    likes: 1560,
+    readingMinutes: 6,
+    aliases: ["Vector DB", "Embedding Store"],
+    image: unsplash("photo-1558494949-ef010cbdcc31"),
+    simpleExplanation:
+      "先把文本/图片编成向量，再把向量与元数据一起落库。查询时用近似最近邻（ANN）找最相近片段，拼进提示词供模型引用。" ,
+    examples: [
+      { title: "企业知识库", content: "手册、工单与制度分段入库。" },
+      { title: "混合检索", content: "BM25 + 向量提升召回与精度。" },
+      { title: "刷新策略", content: "文档更新需重嵌入与版本管理。" },
+      { title: "运营指标", content: "延迟、召回率、引用准确率需联合评估。" },
+    ],
+    relatedTermIds: [11, 1, 6],
+  },
+  {
+    id: 18,
+    slug: "ai-art-prompting",
+    name: "AI 绘画提示词",
+    description: "面向文生图模型的构图、光影与风格描述技巧。",
+    category: "实用技能",
+    likes: 1888,
+    readingMinutes: 5,
+    aliases: ["文生图提示词", "MJ Prompt"],
+    image: unsplash("photo-1634017839464-5c339ebe3cb4"),
+    simpleExplanation:
+      "好用图像提示一般包含主体、环境、镜头、光线、风格、材质与负面提示（不想出现的元素）。不同平台参数语法不同，需对照官方文档。" ,
+    examples: [
+      { title: "主体先行", content: "先锁定人物/物体，再叠环境与情绪。" },
+      { title: "参考图", content: "部分产品支持垫图，注意版权与肖像权。" },
+      { title: "迭代修片", content: "区域重绘、高清化与后期合成常不可省。" },
+      { title: "商用核对", content: "授权范围、水印与训练数据政策因产品而异。" },
+    ],
+    relatedTermIds: [13, 7, 1],
+  },
+  {
+    id: 19,
+    slug: "intelligent-document-processing",
+    name: "文档智能处理",
+    description: "用 OCR、版面分析与模型抽取把非结构化文档转为可用数据。",
+    category: "实用技能",
+    likes: 990,
+    readingMinutes: 6,
+    aliases: ["IDP", "智能文档"],
+    image: unsplash("photo-1450101499163-c8848c66ca85"),
+    simpleExplanation:
+      "典型流水线：扫描件/ PDF → 文本与表格识别 → 字段/schema 抽取 → 校对与人机协同。RAG 常作为问答与复核层。" ,
+    examples: [
+      { title: "票据与合同", content: "字段级抽取比对模板库。" },
+      { title: "表格还原", content: "把复杂版面还原成结构化行列表。" },
+      { title: "多语言混排", content: "中英文、竖排与印章干扰场景。" },
+      { title: "审计留痕", content: "保留原文位置与置信度便于稽核。" },
+    ],
+    relatedTermIds: [6, 11, 1],
+  },
+  {
+    id: 20,
+    slug: "data-analysis-automation",
+    name: "数据分析自动化",
+    description: "用自然语言与脚本生成衔接 SQL、Python 与可视化，缩短从问题到洞察的路径。",
+    category: "实用技能",
+    likes: 1120,
+    readingMinutes: 6,
+    aliases: ["NL2SQL", "分析 Copilot"],
+    image: unsplash("photo-1551288049-bebda4e38f71"),
+    simpleExplanation:
+      "常见形态：模型根据表结构生成查询、解释指标异动、给出图表建议。生产环境要卡住权限、脱敏与「只允许读库」等安全闸。" ,
+    examples: [
+      { title: "探索性分析", content: "自动分布、相关性与异常点提示。" },
+      { title: "报表草稿", content: "生成初稿由分析师复核口径。" },
+      { title: "数据质量", content: "结合规则引擎标记缺失与漂移。" },
+      { title: "与 BI 集成", content: "导出到看板前先过治理流水线。" },
+    ],
+    relatedTermIds: [4, 1, 3],
+  },
 ];
 
 const termMap = new Map<number, TermRecord>(termsCatalog.map((t) => [t.id, t]));
+const termSlugMap = new Map<string, TermRecord>(
+  termsCatalog.map((t) => [t.slug.toLowerCase(), t])
+);
 
 export function getTermById(id: string | undefined): TermRecord | null {
   if (!id) {
@@ -291,9 +468,20 @@ export function getTermById(id: string | undefined): TermRecord | null {
   return termMap.get(n) || null;
 }
 
-export function listTermsSummary(): Pick<TermRecord, "id" | "name" | "description" | "category" | "likes">[] {
+export function getTermBySlug(slug: string | undefined): TermRecord | null {
+  if (!slug) {
+    return null;
+  }
+  return termSlugMap.get(slug.trim().toLowerCase()) || null;
+}
+
+export function listTermsSummary(): Pick<
+  TermRecord,
+  "id" | "slug" | "name" | "description" | "category" | "likes"
+>[] {
   return termsCatalog.map((t) => ({
     id: t.id,
+    slug: t.slug,
     name: t.name,
     description: t.description,
     category: t.category,

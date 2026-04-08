@@ -14,18 +14,22 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
+import { useLoginDialog } from "../context/LoginDialogContext";
 import { tierMeetsMin } from "@/lib/membershipTier";
 import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
-import { getToolById, toolsCatalog } from "@/content/toolsCatalog";
+import { ContentLockInline } from "../components/ContentLock";
+import { getToolById, getToolBySlug, toolsCatalog } from "@/content/toolsCatalog";
 import { recordBrowseEntry } from "@/lib/browseHistory";
 import { apiClient } from "@/lib/api";
 import { PageMeta } from "../components/PageMeta";
 
 export function ToolDetail() {
   const { id } = useParams();
-  const tool = getToolById(id);
-  const { membershipTier, accessToken } = useAuth();
+  const tool = getToolById(id) || getToolBySlug(id);
+  const { membershipTier, accessToken, userId } = useAuth();
+  const { openLogin } = useLoginDialog();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const showFullTutorial = Boolean(userId);
   const [isFavorite, setIsFavorite] = useState(false);
   const [shareHint, setShareHint] = useState("");
   const [avgRating, setAvgRating] = useState<{ count: number; average: number } | null>(null);
@@ -106,6 +110,7 @@ export function ToolDetail() {
       return;
     }
     if (!accessToken) {
+      openLogin();
       return;
     }
     if (!tierMeetsMin(membershipTier, "standard")) {
@@ -217,23 +222,29 @@ export function ToolDetail() {
                           : "目录参考分 · 登录后参与打分"}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          className={`rounded-md p-1 ${myStars && s <= myStars ? "text-amber-500" : "text-muted-foreground"}`}
-                          aria-label={`${s} 星`}
-                          onClick={() => void submitStars(s)}
-                        >
-                          <Star className={`w-5 h-5 ${myStars && s <= myStars ? "fill-amber-400" : ""}`} />
-                        </button>
-                      ))}
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {myStars ? `我的 ${myStars} 星` : "点击星星提交"}
-                      </span>
-                    </div>
-                    {rateHint ? <p className="text-xs text-muted-foreground">{rateHint}</p> : null}
+                    {showFullTutorial ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              className={`rounded-md p-1 ${myStars && s <= myStars ? "text-amber-500" : "text-muted-foreground"}`}
+                              aria-label={`${s} 星`}
+                              onClick={() => void submitStars(s)}
+                            >
+                              <Star className={`w-5 h-5 ${myStars && s <= myStars ? "fill-amber-400" : ""}`} />
+                            </button>
+                          ))}
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {myStars ? `我的 ${myStars} 星` : "点击星星提交"}
+                          </span>
+                        </div>
+                        {rateHint ? <p className="text-xs text-muted-foreground">{rateHint}</p> : null}
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">登录后可参与星级评分</p>
+                    )}
                   </div>
                   {tool.suitableFor ? (
                     <p className="text-sm text-muted-foreground mb-2">适合人群：{tool.suitableFor}</p>
@@ -252,7 +263,7 @@ export function ToolDetail() {
                       onClick={() => void handleFavoriteClick()}
                     >
                       <Star className={`w-4 h-4 mr-2 ${isFavorite ? "fill-amber-400 text-amber-400" : ""}`} />
-                      {isFavorite ? "已收藏" : "收藏"}
+                      {!userId ? "登录后收藏" : isFavorite ? "已收藏" : "收藏"}
                     </Button>
                     <Button
                       type="button"
@@ -279,102 +290,115 @@ export function ToolDetail() {
             </Card>
           ) : null}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8"
-          >
-            <Card className="rounded-3xl border-border p-8 bg-gradient-to-br from-primary/5 to-accent/5">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">工具介绍</h2>
-              </div>
-              <p className="text-foreground leading-relaxed">{tool.fullDescription}</p>
-            </Card>
-          </motion.div>
+          {!showFullTutorial ? (
+            <ContentLockInline
+              unlocked={false}
+              message="登录后查看完整工具介绍、典型使用场景与分步上手说明。"
+              actionLabel="登录 / 注册"
+              onAction={() => openLogin()}
+            />
+          ) : null}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-8"
-          >
-            <h2 className="text-2xl font-semibold text-foreground mb-6">使用场景</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tool.useCases.map((useCase, index) => (
-                <Card
-                  key={index}
-                  className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
-                >
-                  <div className="text-3xl mb-3">{useCase.icon}</div>
-                  <h3 className="font-semibold text-foreground mb-2">{useCase.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{useCase.description}</p>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-8"
-          >
-            <h2 className="text-2xl font-semibold text-foreground mb-6">使用步骤</h2>
-            <Card className="rounded-3xl border-border p-8 bg-white">
-              <div className="space-y-6">
-                {tool.howToUse.map((step) => (
-                  <div key={step.step} className="flex gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                      {step.step}
-                    </div>
-                    <div className="flex-1 pt-1">
-                      <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
-                      <p className="text-muted-foreground leading-relaxed">{step.content}</p>
-                    </div>
+          {showFullTutorial ? (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mb-8"
+              >
+                <Card className="rounded-3xl border-border p-8 bg-gradient-to-br from-primary/5 to-accent/5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-semibold text-foreground">工具介绍</h2>
                   </div>
-                ))}
-              </div>
-            </Card>
-          </motion.div>
+                  <p className="text-foreground leading-relaxed">{tool.fullDescription}</p>
+                </Card>
+              </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="mb-10"
-          >
-            <Card className="rounded-3xl border-border p-6 bg-white text-sm text-muted-foreground leading-relaxed flex gap-2">
-              <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-              <span>
-                外链跳转仅为您提供方便，不代表本平台与第三方存在商业合作；价格、地区可用性与数据处理方式以对方官网为准。
-              </span>
-            </Card>
-          </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mb-8"
+              >
+                <h2 className="text-2xl font-semibold text-foreground mb-6">使用场景</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {tool.useCases.map((useCase, index) => (
+                    <Card
+                      key={index}
+                      className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
+                    >
+                      <div className="text-3xl mb-3">{useCase.icon}</div>
+                      <h3 className="font-semibold text-foreground mb-2">{useCase.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{useCase.description}</p>
+                    </Card>
+                  ))}
+                </div>
+              </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h2 className="text-2xl font-semibold text-foreground mb-6">推荐工具</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {related.map((relatedTool) => (
-                <Link key={relatedTool.id} to={`/tools/${relatedTool.id}`}>
-                  <Card className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-all group">
-                    <div className="text-3xl mb-3">{relatedTool.icon}</div>
-                    <Badge className="rounded-full bg-accent/20 text-accent-foreground border-0 mb-3">
-                      {relatedTool.category}
-                    </Badge>
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {relatedTool.name}
-                    </h3>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mb-8"
+              >
+                <h2 className="text-2xl font-semibold text-foreground mb-6">使用步骤</h2>
+                <Card className="rounded-3xl border-border p-8 bg-white">
+                  <div className="space-y-6">
+                    {tool.howToUse.map((step) => (
+                      <div key={step.step} className="flex gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                          {step.step}
+                        </div>
+                        <div className="flex-1 pt-1">
+                          <h3 className="font-semibold text-foreground mb-2">{step.title}</h3>
+                          <p className="text-muted-foreground leading-relaxed">{step.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45 }}
+                className="mb-10"
+              >
+                <Card className="rounded-3xl border-border p-6 bg-white text-sm text-muted-foreground leading-relaxed flex gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                  <span>
+                    外链跳转仅为您提供方便，不代表本平台与第三方存在商业合作；价格、地区可用性与数据处理方式以对方官网为准。
+                  </span>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <h2 className="text-2xl font-semibold text-foreground mb-6">推荐工具</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {related.map((relatedTool) => (
+                    <Link key={relatedTool.id} to={`/tool/${relatedTool.slug}`}>
+                      <Card className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-all group">
+                        <div className="text-3xl mb-3">{relatedTool.icon}</div>
+                        <Badge className="rounded-full bg-accent/20 text-accent-foreground border-0 mb-3">
+                          {relatedTool.category}
+                        </Badge>
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {relatedTool.name}
+                        </h3>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          ) : null}
         </div>
       </div>
     </>

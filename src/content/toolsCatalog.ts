@@ -12,6 +12,8 @@ export type ToolHowToStep = {
 
 export type ToolRecord = {
   id: number;
+  /** 可读 URL，对应 /tool/[slug] */
+  slug: string;
   name: string;
   description: string;
   icon: string;
@@ -36,6 +38,7 @@ export type ToolRecord = {
 export const toolsCatalog: ToolRecord[] = [
   {
     id: 1,
+    slug: "chatgpt",
     name: "ChatGPT",
     icon: "💬",
     description: "OpenAI 的对话式助手，适合写作、编程与日常问答。",
@@ -64,10 +67,11 @@ export const toolsCatalog: ToolRecord[] = [
       { step: 3, title: "迭代提示", content: "若答案不理想，补充反例、格式或分步要求。" },
       { step: 4, title: "核对与引用", content: "对关键事实交叉验证，涉密信息勿粘贴。" },
     ],
-    relatedToolIds: [3, 4, 6],
+    relatedToolIds: [3, 4, 6, 10, 11, 13],
   },
   {
     id: 2,
+    slug: "midjourney",
     name: "Midjourney",
     icon: "🎨",
     description: "高质量文生图工具，适合视觉概念与美术参考。",
@@ -100,6 +104,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 3,
+    slug: "claude",
     name: "Claude",
     icon: "🤖",
     description: "Anthropic 的长上下文助手，擅长大文档阅读与结构化输出。",
@@ -132,6 +137,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 4,
+    slug: "notion-ai",
     name: "Notion AI",
     icon: "📝",
     description: "集成在 Notion 中的 AI，用于笔记总结、行动项与模板化写作。",
@@ -164,6 +170,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 5,
+    slug: "stable-diffusion",
     name: "Stable Diffusion",
     icon: "🖼️",
     description: "开源文生图生态，可本地部署与二次开发。",
@@ -196,6 +203,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 6,
+    slug: "github-copilot",
     name: "GitHub Copilot",
     icon: "👨‍💻",
     description: "面向 IDE 的代码补全与对话助手，提升日常开发效率。",
@@ -228,6 +236,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 7,
+    slug: "runway",
     name: "Runway",
     icon: "🎬",
     description: "AI 视频生成与编辑工具链，覆盖抠像、补帧与短片生成。",
@@ -260,6 +269,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 8,
+    slug: "jasper",
     name: "Jasper",
     icon: "✍️",
     description: "面向营销团队的文案生成平台，模板化程度高。",
@@ -292,6 +302,7 @@ export const toolsCatalog: ToolRecord[] = [
   },
   {
     id: 9,
+    slug: "dalle-3",
     name: "DALL·E 3",
     icon: "🌈",
     description: "OpenAI 的文生图模型，强调提示遵循与可读文字绘制。",
@@ -322,9 +333,144 @@ export const toolsCatalog: ToolRecord[] = [
     ],
     relatedToolIds: [1, 2, 5],
   },
+  {
+    id: 10,
+    slug: "wenxin-yiyan",
+    name: "文心一言",
+    icon: "🐼",
+    description: "百度大语言模型产品，中文场景优化，适合办公与企业应用接入。",
+    category: "对话助手",
+    tags: ["中文", "对话", "企业"],
+    rating: 4.6,
+    link: "https://yiyan.baidu.com",
+    platform: "Web / 移动端 / API",
+    openSource: false,
+    priceTier: "freemium",
+    suitableFor: "中文办公、内容创作与开发者试验",
+    disclaimer: "能力边界、计费与备案要求以百度智能云官方说明为准。",
+    fullDescription:
+      "文心一言覆盖多轮对话、文案、逻辑推理与插件生态（以实际上线为准）。可与百度搜索等工具链结合，部署时需关注数据出境与行业合规。" ,
+    useCases: [
+      { title: "中文写作", description: "公文、营销与多风格改写。", icon: "✍️" },
+      { title: "知识问答", description: "结合检索增强事实性（视功能开放情况）。", icon: "📚" },
+      { title: "办公效率", description: "表格要点、纪要草稿与邮件润色。", icon: "🗂️" },
+      { title: "行业模板", description: "垂直场景指令与市场活动文案。", icon: "🏢" },
+      { title: "API 集成", description: "企业内部助手与客服前置筛选。", icon: "🔌" },
+      { title: "教育对比", description: "与海外模型对照评估中文表达与文化语境。", icon: "🎓" },
+    ],
+    howToUse: [
+      { step: 1, title: "开通账号", content: "使用百度账号并完成实名/企业认证（如需）。" },
+      { step: 2, title: "明确场景", content: "一次输出集中一个任务，附示例与格式。" },
+      { step: 3, title: "事实核对", content: "对法规、医学与金融表述做人工复核。" },
+      { step: 4, title: "API 密钥", content: "密钥分级保管，限制出口 IP 与 QPS。" },
+    ],
+    relatedToolIds: [1, 3, 11, 13],
+  },
+  {
+    id: 11,
+    slug: "tongyi-qwen",
+    name: "通义千问",
+    icon: "🧧",
+    description: "阿里云推出的大模型家族，覆盖通用对话、代码与多模态能力。",
+    category: "对话助手",
+    tags: ["阿里", "中文", "API"],
+    rating: 4.6,
+    link: "https://tongyi.aliyun.com",
+    platform: "Web / DashScope API",
+    openSource: false,
+    priceTier: "freemium",
+    suitableFor: "开发者、企业与中文知识工作流",
+    disclaimer: "模型版本名、地区策略与计价以阿里云文档为准。",
+    fullDescription:
+      "通义系列在代码、长文本与工具调用等能力上持续迭代，可与钉钉、阿里云产品整合；上线业务需评估 SLA 与合规。" ,
+    useCases: [
+      { title: "研发辅助", description: "代码解释、单测思路与 SQL 草稿。", icon: "💻" },
+      { title: "企业知识", description: "内部文档问答与工单摘要。", icon: "🏛️" },
+      { title: "数据报表", description: "自然语言问数与图表建议（需接治理层）。", icon: "📊" },
+      { title: "客服", description: "话术推荐与情绪识别前置。", icon: "🎧" },
+      { title: "营销本地化", description: "多方言与节日运营文案。", icon: "🧨" },
+      { title: "与钉钉协同", description: "在办公流里嵌入摘要与待办抽取。", icon: "📎" },
+    ],
+    howToUse: [
+      { step: 1, title: "选型", content: "按场景选择对话、代码或多模态模型规格。" },
+      { step: 2, title: "接入", content: "控制台创建 API Key，配置限流与日志。" },
+      { step: 3, title: "对齐口径", content: "用系统提示锁定品牌与禁用词。" },
+      { step: 4, title: "观测", content: "记录延迟、失败率与人工抽检引用质量。" },
+    ],
+    relatedToolIds: [1, 3, 10, 13],
+  },
+  {
+    id: 12,
+    slug: "jimeng",
+    name: "即梦",
+    icon: "✨",
+    description: "字节跳动系文生图/影像工具，偏中文提示与短视频美学。",
+    category: "图像生成",
+    tags: ["中文", "图像", "视频"],
+    rating: 4.5,
+    link: "https://jimeng.jianying.com",
+    platform: "Web / App",
+    openSource: false,
+    priceTier: "freemium",
+    suitableFor: "社媒视觉、口播封面与概念图",
+    disclaimer: "产品名称与域名以官方最新入口为准；商用授权请阅用户协议。",
+    fullDescription:
+      "适合中文提示词与流行视觉风格探索；与剪映链路衔接便于短视频生产。复杂精修仍需导入专业后期。" ,
+    useCases: [
+      { title: "短视频封面", description: "高饱和、强标题安全的缩略图草案。", icon: "📱" },
+      { title: "口播配图", description: "与脚本情绪匹配的插画。", icon: "🎙️" },
+      { title: "活动主视觉", description: "节日与促销氛围快速试错。", icon: "🎊" },
+      { title: "国风/二次元", description: "细分题材需核对版权与肖像。", icon: "🎭" },
+      { title: "分镜草图", description: "镜头语言与角色一致性实验。", icon: "🎬" },
+      { title: "与豆包协同", description: "文案由对话模型、视觉由即梦分工。", icon: "🔗" },
+    ],
+    howToUse: [
+      { step: 1, title: "登录与额度", content: "确认会员档位、积分与生成队列。" },
+      { step: 2, title: "写中文提示", content: "写明主体、镜头、光线与禁忌元素。" },
+      { step: 3, title: "批量迭代", content: "小步调整比一次冗长提示更有效。" },
+      { step: 4, title: "导出规范", content: "分辨率、水印与商用条款提前确认。" },
+    ],
+    relatedToolIds: [2, 5, 9, 13],
+  },
+  {
+    id: 13,
+    slug: "doubao",
+    name: "豆包",
+    icon: "🫘",
+    description: "字节跳动推出的通用助手，覆盖对话、创作与多模态交互。",
+    category: "对话助手",
+    tags: ["中文", "对话", "免费额度"],
+    rating: 4.5,
+    link: "https://www.doubao.com",
+    platform: "Web / App",
+    openSource: false,
+    priceTier: "freemium",
+    suitableFor: "日常问答、学习辅导与轻办公",
+    disclaimer: "功能以客户端展示为准；数据处理与青少年模式需按官方指引使用。",
+    fullDescription:
+      "豆包强调低门槛与中文体验，可与即梦等产品形成「文本 + 视觉」组合；企业场景建议评估私有部署或专有云方案。" ,
+    useCases: [
+      { title: "学习陪伴", description: "分步讲题与记忆卡片生成。", icon: "📖" },
+      { title: "生活助手", description: "行程、食谱与家常问答。", icon: "🏠" },
+      { title: "轻量办公", description: "邮件、周报与会议纪要草稿。", icon: "📝" },
+      { title: "创意脑暴", description: "标题、脚本与分镜文字。", icon: "💡" },
+      { title: "编程入门", description: "小段脚本与报错解释。", icon: "🧑‍💻" },
+      { title: "与即梦搭配", description: "先生成画面描述再交给图像工具。", icon: "🖼️" },
+    ],
+    howToUse: [
+      { step: 1, title: "下载或 Web", content: "选择适合终端的版本并完成登录。" },
+      { step: 2, title: "设定角色", content: "在首条消息里写明身份与输出结构。" },
+      { step: 3, title: "多轮修正", content: "用反例与约束缩小模型自由度。" },
+      { step: 4, title: "隐私", content: "敏感材料脱敏后再粘贴。" },
+    ],
+    relatedToolIds: [1, 3, 10, 11, 12],
+  },
 ];
 
 const toolMap = new Map<number, ToolRecord>(toolsCatalog.map((t) => [t.id, t]));
+const toolSlugMap = new Map<string, ToolRecord>(
+  toolsCatalog.map((t) => [t.slug.toLowerCase(), t])
+);
 
 export function getToolById(id: string | undefined): ToolRecord | null {
   if (!id) {
@@ -337,12 +483,20 @@ export function getToolById(id: string | undefined): ToolRecord | null {
   return toolMap.get(n) || null;
 }
 
+export function getToolBySlug(slug: string | undefined): ToolRecord | null {
+  if (!slug) {
+    return null;
+  }
+  return toolSlugMap.get(slug.trim().toLowerCase()) || null;
+}
+
 export function listToolsSummary(): Pick<
   ToolRecord,
-  "id" | "name" | "description" | "icon" | "category" | "tags" | "rating" | "link"
+  "id" | "slug" | "name" | "description" | "icon" | "category" | "tags" | "rating" | "link"
 >[] {
   return toolsCatalog.map((t) => ({
     id: t.id,
+    slug: t.slug,
     name: t.name,
     description: t.description,
     icon: t.icon,

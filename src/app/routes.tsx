@@ -30,45 +30,11 @@ import { ProBooking } from "./pages/ProBooking";
 import { MembershipBenefits } from "./pages/MembershipBenefits";
 import { Referral } from "./pages/Referral";
 import { ToolsCompare } from "./pages/ToolsCompare";
-
-function AuthTermsList() {
-  return (
-    <RequireAccess minTier="auth">
-      <TermsList />
-    </RequireAccess>
-  );
-}
-
-function AuthTermDetail() {
-  return (
-    <RequireAccess minTier="auth">
-      <TermDetail />
-    </RequireAccess>
-  );
-}
-
-function AuthToolsList() {
-  return (
-    <RequireAccess minTier="auth">
-      <ToolsList />
-    </RequireAccess>
-  );
-}
-
-function AuthToolDetail() {
-  return (
-    <RequireAccess minTier="auth">
-      <ToolDetail />
-    </RequireAccess>
-  );
-}
+import { TermBySlug } from "./pages/TermBySlug";
+import { ToolBySlug } from "./pages/ToolBySlug";
 
 function StandardLearningPath() {
-  return (
-    <RequireAccess minTier="standard">
-      <LearningPath />
-    </RequireAccess>
-  );
+  return <LearningPath />;
 }
 
 function StandardTemplates() {
@@ -154,10 +120,12 @@ export const router = createBrowserRouter([
       { path: "help", Component: Help },
       { path: "site-map", Component: SiteMap },
       { path: "feedback", Component: Feedback },
-      { path: "terms", Component: AuthTermsList },
-      { path: "terms/:id", Component: AuthTermDetail },
-      { path: "tools", Component: AuthToolsList },
-      { path: "tools/:id", Component: AuthToolDetail },
+      { path: "terms", Component: TermsList },
+      { path: "terms/:id", Component: TermDetail },
+      { path: "term/:slug", Component: TermBySlug },
+      { path: "tools", Component: ToolsList },
+      { path: "tools/:id", Component: ToolDetail },
+      { path: "tool/:slug", Component: ToolBySlug },
       { path: "learning-path", Component: StandardLearningPath },
       { path: "templates", Component: StandardTemplates },
       { path: "templates/submit", Component: AuthTemplateSubmit },

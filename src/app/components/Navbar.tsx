@@ -74,6 +74,16 @@ export function Navbar() {
       );
     }
 
+    if (item.path === "/terms" || item.path === "/tools") {
+      return (
+        <Link key={item.path} to={item.path}>
+          <Button variant="ghost" className={btnClass}>
+            {buttonInner}
+          </Button>
+        </Link>
+      );
+    }
+
     if (!userId) {
       return (
         <Button

@@ -165,7 +165,7 @@ export function TermsList() {
                       />
                     </button>
                   </div>
-                  <Link to={`/terms/${term.id}`}>
+                  <Link to={`/term/${term.slug}`}>
                     <h3 className="text-lg font-semibold text-foreground mb-3 group-hover:text-primary transition-colors">
                       {term.name}
                     </h3>
@@ -178,7 +178,7 @@ export function TermsList() {
                       <Heart className="w-4 h-4" />
                       {term.likes}
                     </span>
-                    <Link to={`/terms/${term.id}`}>
+                    <Link to={`/term/${term.slug}`}>
                       <Button variant="ghost" size="sm" className="rounded-full text-primary">
                         查看详情 →
                       </Button>
