@@ -41,6 +41,7 @@ import { AdminAssets } from "./pages/admin/AdminAssets";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminOrders } from "./pages/admin/AdminOrders";
 import { AdminTickets } from "./pages/admin/AdminTickets";
+import { AdminOps } from "./pages/admin/AdminOps";
 
 function StandardLearningPath() {
   return <LearningPath />;
@@ -149,6 +150,7 @@ export const router = createBrowserRouter([
         path: "admin",
         Component: AdminGate,
         children: [
+          { path: "ops", Component: AdminOps },
           { path: "terms", Component: AdminTerms },
           { path: "tools", Component: AdminTools },
           { path: "templates", Component: AdminTemplates },

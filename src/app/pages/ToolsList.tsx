@@ -88,19 +88,11 @@ export function ToolsList() {
     };
   }, []);
 
-  const list = cmsList && cmsList.length > 0 ? cmsList : localList;
   const mergedList = useMemo(() => {
-    if (!cmsList || 0 === cmsList.length) {
-      return localList;
+    if (cmsList && cmsList.length > 0) {
+      return cmsList;
     }
-    const bySlug = new Map<string, any>();
-    for (const item of localList) {
-      bySlug.set(item.slug, item);
-    }
-    for (const item of cmsList) {
-      bySlug.set(item.slug, item);
-    }
-    return Array.from(bySlug.values());
+    return localList;
   }, [cmsList, localList]);
 
   const filteredTools = mergedList.filter((tool) => {

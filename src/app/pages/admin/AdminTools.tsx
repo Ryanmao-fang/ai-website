@@ -7,6 +7,9 @@ import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { toolsCatalog } from "@/content/toolsCatalog";
 import { Link } from "react-router";
+import { parseJsonOrCsv, type ImportMode } from "../../lib/importParsers";
+import { CmsImageUrlField } from "../../components/CmsImageUrlField";
+import { CmsMarkdownToolbar } from "../../components/CmsMarkdownToolbar";
 
 type ToolRow = {
   id: number;
@@ -27,6 +30,11 @@ export function AdminTools() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<any | null>(null);
   const [importing, setImporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [importText, setImportText] = useState("");
+  const [importMode, setImportMode] = useState<ImportMode>("upsert");
+  const [importHint, setImportHint] = useState("");
+  const [failedRows, setFailedRows] = useState<{ index: number; slug: string; reason: string; raw?: any }[]>([]);
 
   const filtered = useMemo(() => items, [items]);
 
@@ -41,6 +49,30 @@ export function AdminTools() {
       setItems(((payload as any)?.items || []) as ToolRow[]);
     } catch (e) {
       setError((e as Error)?.message || "加载失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelected = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const doBatch = async (action: "publish" | "unpublish" | "delete") => {
+    if (!token || 0 === selectedIds.length) {
+      return;
+    }
+    if ("delete" === action && !window.confirm(`确认批量删除 ${selectedIds.length} 条工具吗？`)) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.batchTools(token, { ids: selectedIds, action });
+      setSelectedIds([]);
+      await reload();
+    } catch (e) {
+      setError((e as Error)?.message || "批量操作失败");
     } finally {
       setLoading(false);
     }
@@ -198,6 +230,75 @@ export function AdminTools() {
     }
   };
 
+  const importFromText = async () => {
+    if (!token || !importText.trim()) {
+      return;
+    }
+    setImporting(true);
+    setError("");
+    setImportHint("");
+    setFailedRows([]);
+    try {
+      const items = parseJsonOrCsv(importText) as any[];
+      if (!items.length) {
+        throw new Error("导入内容为空或格式不正确");
+      }
+      const resp = (await adminApi.importTools(token, { items, mode: importMode })) as any;
+      setImportText("");
+      await reload();
+      setImportHint(`总计 ${Number(resp?.total || items.length)} 条，成功 ${Number(resp?.success || 0)} 条，失败 ${Number(resp?.failed || 0)} 条`);
+      setFailedRows(Array.isArray(resp?.failedRows) ? resp.failedRows : []);
+    } catch (e) {
+      setError((e as Error)?.message || "导入失败");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadFailedJson = () => {
+    if (0 === failedRows.length) {
+      return;
+    }
+    const blob = new Blob([JSON.stringify(failedRows, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tools-import-failed-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const retryFailedRows = async () => {
+    if (!token || 0 === failedRows.length) {
+      return;
+    }
+    const retryItems = failedRows.map((f) => f.raw).filter(Boolean);
+    if (0 === retryItems.length) {
+      setError("失败项缺少原始数据，无法重试，请重新导入原文件。");
+      return;
+    }
+    setImporting(true);
+    setError("");
+    try {
+      const resp = (await adminApi.importTools(token, { items: retryItems, mode: "upsert" })) as any;
+      setImportHint(`重试完成：成功 ${Number(resp?.success || 0)} 条，失败 ${Number(resp?.failed || 0)} 条`);
+      setFailedRows(Array.isArray(resp?.failedRows) ? resp.failedRows : []);
+      await reload();
+    } catch (e) {
+      setError((e as Error)?.message || "重试失败");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const importFromFile = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    const text = await file.text();
+    setImportText(text);
+  };
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl border-border p-5 bg-white">
@@ -246,8 +347,79 @@ export function AdminTools() {
           >
             新建
           </Button>
+          <Button variant="outline" className="rounded-full" disabled={0 === selectedIds.length || loading} onClick={() => void doBatch("publish")}>
+            批量发布({selectedIds.length})
+          </Button>
+          <Button variant="outline" className="rounded-full" disabled={0 === selectedIds.length || loading} onClick={() => void doBatch("unpublish")}>
+            批量下线
+          </Button>
+          <Button variant="outline" className="rounded-full text-destructive" disabled={0 === selectedIds.length || loading} onClick={() => void doBatch("delete")}>
+            批量删除
+          </Button>
         </div>
         {error ? <p className="text-sm text-destructive mt-3">{error}</p> : null}
+        <div className="mt-4">
+          <p className="text-xs text-muted-foreground mb-2">批量导入（JSON数组或CSV，至少包含 slug,name）</p>
+          <div className="flex flex-wrap gap-2 mb-2">
+            <select
+              value={importMode}
+              onChange={(e) => setImportMode(e.target.value as ImportMode)}
+              className="h-9 rounded-full border border-border bg-white px-3 text-xs"
+            >
+              <option value="upsert">upsert（按slug覆盖或新增）</option>
+              <option value="insert_only">insert_only（仅新增）</option>
+            </select>
+            <label className="inline-flex">
+              <input
+                type="file"
+                className="hidden"
+                accept=".json,.csv,.txt"
+                onChange={(e) => {
+                  const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                  void importFromFile(f);
+                }}
+              />
+              <span className="inline-flex items-center justify-center rounded-full border border-border px-3 h-9 text-xs cursor-pointer bg-white">
+                读取本地文件
+              </span>
+            </label>
+          </div>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            className="w-full rounded-2xl border border-border p-3 text-xs min-h-[120px] font-mono"
+            placeholder={`JSON: [{"slug":"test-tool","name":"测试工具","description":"...","category":"对话助手","status":"published"}]
+CSV: slug,name,description,category,icon,link,status`}
+          />
+          <div className="mt-2">
+            <Button variant="outline" className="rounded-full" disabled={importing || loading || !importText.trim()} onClick={() => void importFromText()}>
+              {importing ? "导入中…" : "执行批量导入"}
+            </Button>
+            {importHint ? <span className="text-xs text-emerald-600 ml-3">{importHint}</span> : null}
+          </div>
+          {failedRows.length > 0 ? (
+            <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-xs text-destructive">失败明细（前20条）</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="rounded-full h-7 text-xs" onClick={downloadFailedJson}>
+                    下载失败清单
+                  </Button>
+                  <Button variant="outline" size="sm" className="rounded-full h-7 text-xs" onClick={() => void retryFailedRows()} disabled={importing}>
+                    一键重试失败项
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1 max-h-40 overflow-auto">
+                {failedRows.slice(0, 20).map((f) => (
+                  <p key={`${f.index}-${f.slug}`} className="text-xs text-muted-foreground">
+                    行 {f.index + 1} · {f.slug || "-"} · {f.reason}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
       </Card>
 
       {editing ? (
@@ -289,9 +461,15 @@ export function AdminTools() {
               <p className="text-xs text-muted-foreground mb-1">分类</p>
               <Input value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="rounded-full" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">图标（emoji 或 图片URL）</p>
-              <Input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} className="rounded-full" />
+            <div className="md:col-span-2">
+              <CmsImageUrlField
+                token={token}
+                label="图标（emoji 或图片 URL；上传后可用于详情页头像）"
+                helper="仍以单行字符串存库：可填 🤖 或 https://…；上传会覆盖为图片地址。"
+                value={editing.icon || ""}
+                onChange={(url) => setEditing({ ...editing, icon: url })}
+                previewClassName="w-20 h-20"
+              />
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1">官网链接</p>
@@ -319,10 +497,11 @@ export function AdminTools() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">正文（Markdown）</p>
+            <CmsMarkdownToolbar token={token} markdown={editing.contentMarkdown || ""} onChangeMarkdown={(md) => setEditing({ ...editing, contentMarkdown: md })} />
             <textarea
               value={editing.contentMarkdown}
               onChange={(e) => setEditing({ ...editing, contentMarkdown: e.target.value })}
-              className="w-full rounded-2xl border border-border p-3 text-sm min-h-[260px] font-mono"
+              className="w-full rounded-2xl border border-border p-3 text-sm min-h-[260px] font-mono mt-2"
             />
           </div>
         </Card>
@@ -335,26 +514,29 @@ export function AdminTools() {
         </div>
         <div className="space-y-2">
           {filtered.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className="w-full text-left rounded-2xl border border-border p-4 hover:bg-muted/30"
-              onClick={() => void openEditorById(t.id)}
-            >
+            <div key={t.id} className="w-full rounded-2xl border border-border p-4 hover:bg-muted/30">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="rounded-full border-0 text-xs">
-                      {t.status}
-                    </Badge>
-                    <span className="text-sm font-medium text-foreground">{t.name}</span>
-                    <span className="text-xs text-muted-foreground">/{t.slug}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{t.description}</p>
+                <div className="flex items-start gap-3 min-w-0">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={selectedIds.includes(t.id)}
+                    onChange={() => toggleSelected(t.id)}
+                  />
+                  <button type="button" className="text-left min-w-0" onClick={() => void openEditorById(t.id)}>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="rounded-full border-0 text-xs">
+                        {t.status}
+                      </Badge>
+                      <span className="text-sm font-medium text-foreground">{t.name}</span>
+                      <span className="text-xs text-muted-foreground">/{t.slug}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{t.description}</p>
+                  </button>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">{new Date(t.updated_at).toLocaleString()}</span>
               </div>
-            </button>
+            </div>
           ))}
         </div>
         {0 === filtered.length ? (

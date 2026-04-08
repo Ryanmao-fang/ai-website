@@ -50,31 +50,49 @@ export function TermDetail() {
     };
   }, [id]);
 
-  const effectiveTerm =
-    term ||
-    (cmsTerm
-      ? {
-          id: -1,
-          slug: String(cmsTerm.slug || id || ""),
-          name: String(cmsTerm.name || ""),
-          description: String(cmsTerm.description || ""),
-          category: String(cmsTerm.category || ""),
-          likes: 0,
-          simpleExplanation: String(cmsTerm.description || ""),
-          examples: [] as { title: string; content: string }[],
-          relatedTermIds: [] as number[],
-          image: String(cmsTerm.cover_image_url || ""),
-          readingMinutes: Number(cmsTerm.reading_minutes || 5),
-          aliases: [] as string[],
-          contentVersion: String(cmsTerm.content_version || ""),
-          references: [] as { title: string; url: string }[],
-        }
-      : null);
+  const effectiveTerm = cmsTerm
+    ? {
+        id: -1,
+        slug: String(cmsTerm.slug || id || ""),
+        name: String(cmsTerm.name || ""),
+        description: String(cmsTerm.description || ""),
+        category: String(cmsTerm.category || ""),
+        likes: 0,
+        simpleExplanation: String(
+          (cmsTerm.content_json && (cmsTerm.content_json as any).simpleExplanation) || cmsTerm.description || ""
+        ),
+        examples: ((cmsTerm.content_json && (cmsTerm.content_json as any).examples) || []) as {
+          title: string;
+          content: string;
+        }[],
+        relatedTermIds: [] as number[],
+        image: String(cmsTerm.cover_image_url || ""),
+        readingMinutes: Number(cmsTerm.reading_minutes || 5),
+        aliases: ((cmsTerm.content_json && (cmsTerm.content_json as any).aliases) || []) as string[],
+        contentVersion: String(cmsTerm.content_version || ""),
+        references: ((cmsTerm.content_json && (cmsTerm.content_json as any).references) || []) as {
+          title: string;
+          url: string;
+        }[],
+      }
+    : term || null;
 
   const cmsMarkdown = String(cmsTerm?.content_markdown || "");
   const previewLen = cmsMarkdown ? Math.min(1600, Math.max(600, Math.floor(cmsMarkdown.length * 0.3))) : 0;
   const cmsPreview = cmsMarkdown ? cmsMarkdown.slice(0, previewLen) : "";
   const cmsRest = cmsMarkdown ? cmsMarkdown.slice(previewLen) : "";
+
+  useEffect(() => {
+    if (!effectiveTerm) {
+      return;
+    }
+    recordBrowseEntry({
+      type: "term",
+      id: effectiveTerm.slug || String(effectiveTerm.id),
+      title: effectiveTerm.name,
+      category: effectiveTerm.category,
+    });
+  }, [effectiveTerm]);
 
   if (!effectiveTerm) {
     if (cmsLoading) {
@@ -86,18 +104,6 @@ export function TermDetail() {
     }
     return <Navigate to="/not-found" replace />;
   }
-
-  useEffect(() => {
-    if (!term) {
-      return;
-    }
-    recordBrowseEntry({
-      type: "term",
-      id: term.id,
-      title: term.name,
-      category: term.category,
-    });
-  }, [term]);
 
   const refreshFavorite = useCallback(async () => {
     if (!accessToken || !effectiveTerm || effectiveTerm.id <= 0 || !tierMeetsMin(membershipTier, "standard")) {
@@ -232,6 +238,22 @@ export function TermDetail() {
               </Button>
             </Link>
           </motion.div>
+
+          {effectiveTerm.image && /^https?:\/\//i.test(String(effectiveTerm.image).trim()) ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.06 }}
+              className="mb-6"
+            >
+              <img
+                src={effectiveTerm.image}
+                alt=""
+                className="w-full max-h-[min(420px,55vh)] object-cover rounded-3xl border border-border shadow-sm bg-muted/30"
+                loading="eager"
+              />
+            </motion.div>
+          ) : null}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -397,7 +419,7 @@ export function TermDetail() {
             )}
           </motion.div>
 
-          {showFullContent && term.references && term.references.length > 0 ? (
+          {showFullContent && effectiveTerm.references && effectiveTerm.references.length > 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -406,7 +428,7 @@ export function TermDetail() {
             >
               <h2 className="text-xl font-semibold text-foreground mb-3">参考链接（第三方，非背书）</h2>
               <ul className="space-y-2 text-sm">
-                {term.references.map((r) => (
+                {effectiveTerm.references.map((r) => (
                   <li key={r.url}>
                     <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       {r.title}
@@ -426,7 +448,7 @@ export function TermDetail() {
             <h2 className="text-2xl font-semibold text-foreground mb-6">实战案例（会员优先）</h2>
             {showFullContent ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {term.examples.map((example, index) => (
+                {effectiveTerm.examples.map((example, index) => (
                   <Card
                     key={index}
                     className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
@@ -442,7 +464,7 @@ export function TermDetail() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {term.examples.slice(0, 1).map((example, index) => (
+                  {effectiveTerm.examples.slice(0, 1).map((example, index) => (
                     <Card
                       key={index}
                       className="rounded-3xl border-border p-6 bg-white hover:shadow-md transition-shadow"
@@ -455,15 +477,15 @@ export function TermDetail() {
                     </Card>
                   ))}
                 </div>
-                {term.examples.length > 1 ? (
+                {effectiveTerm.examples.length > 1 ? (
                   <ContentLock
                     unlocked={false}
-                    message={`还有 ${term.examples.length - 1} 个示例与详解，登录后即可阅读。`}
+                    message={`还有 ${effectiveTerm.examples.length - 1} 个示例与详解，登录后即可阅读。`}
                     actionLabel="登录 / 注册"
                     onAction={() => openLogin()}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-0 h-40" aria-hidden>
-                      {term.examples.slice(1).map((example, index) => (
+                      {effectiveTerm.examples.slice(1).map((example, index) => (
                         <Card key={index} className="rounded-3xl border-border p-6 bg-white">
                           <h3 className="font-semibold text-foreground mb-2">{example.title}</h3>
                           <p className="text-muted-foreground leading-relaxed">{example.content}</p>

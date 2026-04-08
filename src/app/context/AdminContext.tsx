@@ -1,11 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { adminApi } from "@/app/lib/adminApi";
+
+export type AdminProfile = {
+  adminRole: string;
+  username: string;
+  adminNote: string;
+};
 
 type AdminState = {
   token: string | null;
   expiresAt: number | null;
   loading: boolean;
+  profile: AdminProfile | null;
 };
 
 type AdminContextType = AdminState & {
@@ -27,13 +35,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     token: null,
     expiresAt: null,
     loading: true,
+    profile: null,
   });
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
-        setState((prev) => ({ ...prev, loading: false }));
+        setState((prev) => ({ ...prev, loading: false, profile: null }));
         return;
       }
       const parsed = JSON.parse(raw) as { token?: string; expiresAt?: number };
@@ -41,17 +50,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const expiresAt = typeof parsed?.expiresAt === "number" ? parsed.expiresAt : null;
       if (!token || !expiresAt || nowMs() >= expiresAt) {
         localStorage.removeItem(STORAGE_KEY);
-        setState((prev) => ({ ...prev, loading: false }));
+        setState((prev) => ({ ...prev, loading: false, profile: null }));
         return;
       }
-      setState({ token, expiresAt, loading: false });
+      setState({ token, expiresAt, loading: false, profile: null });
     } catch {
-      setState((prev) => ({ ...prev, loading: false }));
+      setState((prev) => ({ ...prev, loading: false, profile: null }));
     }
   }, []);
 
   const setToken = useCallback((token: string | null, expiresAt: number | null) => {
-    setState((prev) => ({ ...prev, token, expiresAt }));
+    setState((prev) => ({ ...prev, token, expiresAt, profile: token ? prev.profile : null }));
     try {
       if (!token || !expiresAt) {
         localStorage.removeItem(STORAGE_KEY);
@@ -87,6 +96,37 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     },
     [setToken]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!state.token) {
+        setState((prev) => ({ ...prev, profile: null }));
+        return;
+      }
+      try {
+        const payload = await adminApi.me(state.token);
+        const a = (payload as { admin?: { adminRole?: string; username?: string; adminNote?: string } })?.admin;
+        if (!cancelled) {
+          setState((prev) => ({
+            ...prev,
+            profile: {
+              adminRole: String(a?.adminRole || "super_admin"),
+              username: String(a?.username || ""),
+              adminNote: String(a?.adminNote || ""),
+            },
+          }));
+        }
+      } catch {
+        if (!cancelled) {
+          setState((prev) => ({ ...prev, profile: null }));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.token]);
 
   const value = useMemo(
     () => ({

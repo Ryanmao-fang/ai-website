@@ -4,7 +4,8 @@ import { templatesCatalog } from "@/content/templatesCatalog";
 
 export type SearchResultTerm = {
   kind: "term";
-  id: number;
+  id: number | string;
+  slug?: string;
   name: string;
   description: string;
   category: string;
@@ -12,7 +13,8 @@ export type SearchResultTerm = {
 
 export type SearchResultTool = {
   kind: "tool";
-  id: number;
+  id: number | string;
+  slug?: string;
   name: string;
   description: string;
   category: string;
@@ -27,10 +29,18 @@ export type SearchResultTemplate = {
   category: string;
 };
 
+export type SearchResultLearningPath = {
+  kind: "learningPath";
+  slug: string;
+  title: string;
+  description: string;
+};
+
 export type SearchResults = {
   terms: SearchResultTerm[];
   tools: SearchResultTool[];
   templates: SearchResultTemplate[];
+  learningPaths: SearchResultLearningPath[];
 };
 
 function normalize(s: string): string {
@@ -40,7 +50,7 @@ function normalize(s: string): string {
 export function searchAllContent(rawQuery: string): SearchResults {
   const q = normalize(rawQuery);
   if (!q) {
-    return { terms: [], tools: [], templates: [] };
+    return { terms: [], tools: [], templates: [], learningPaths: [] };
   }
 
   const terms = termsCatalog
@@ -53,6 +63,7 @@ export function searchAllContent(rawQuery: string): SearchResults {
     .map((t) => ({
       kind: "term" as const,
       id: t.id,
+      slug: t.slug,
       name: t.name,
       description: t.description,
       category: t.category,
@@ -68,6 +79,7 @@ export function searchAllContent(rawQuery: string): SearchResults {
     .map((t) => ({
       kind: "tool" as const,
       id: t.id,
+      slug: t.slug,
       name: t.name,
       description: t.description,
       category: t.category,
@@ -87,5 +99,5 @@ export function searchAllContent(rawQuery: string): SearchResults {
       category: t.category,
     }));
 
-  return { terms, tools, templates };
+  return { terms, tools, templates, learningPaths: [] };
 }

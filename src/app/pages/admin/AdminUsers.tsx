@@ -7,7 +7,8 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 
 export function AdminUsers() {
-  const { token } = useAdmin();
+  const { token, profile } = useAdmin();
+  const [rolePick, setRolePick] = useState<Record<string, string>>({});
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [perPage] = useState(50);
@@ -79,6 +80,11 @@ export function AdminUsers() {
                     {u.isAdmin ? (
                       <Badge className="rounded-full bg-primary/10 text-primary border-0">Admin</Badge>
                     ) : null}
+                    {u.isAdmin && u.adminRole ? (
+                      <Badge variant="secondary" className="rounded-full border-0 text-xs">
+                        {u.adminRole}
+                      </Badge>
+                    ) : null}
                     {u.membership?.endAt ? (
                       <Badge variant="secondary" className="rounded-full border-0">
                         到期：{new Date(u.membership.endAt).toLocaleDateString()}
@@ -103,7 +109,11 @@ export function AdminUsers() {
                         return;
                       }
                       try {
-                        await adminApi.setUserAdmin(token, u.id, { isAdmin: !u.isAdmin, adminNote: u.adminNote || "" });
+                        await adminApi.setUserAdmin(token, u.id, {
+                          isAdmin: !u.isAdmin,
+                          adminNote: reason || u.adminNote || "",
+                          adminRole: u.adminRole || "super_admin",
+                        });
                         await reload();
                       } catch (e) {
                         alert((e as Error)?.message || "操作失败");
@@ -152,6 +162,44 @@ export function AdminUsers() {
                   >
                     +1月专业
                   </Button>
+                  {"super_admin" === profile?.adminRole && u.isAdmin ? (
+                    <>
+                      <select
+                        className="h-9 rounded-full border border-border bg-white px-3 text-xs"
+                        value={rolePick[u.id] ?? u.adminRole ?? "editor"}
+                        onChange={(e) => setRolePick((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                      >
+                        <option value="super_admin">super_admin</option>
+                        <option value="ops">ops</option>
+                        <option value="editor">editor</option>
+                        <option value="reviewer">reviewer</option>
+                      </select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        onClick={async () => {
+                          if (!token) return;
+                          if (!reason.trim()) {
+                            alert("请先填写操作原因");
+                            return;
+                          }
+                          try {
+                            await adminApi.setUserAdmin(token, u.id, {
+                              isAdmin: true,
+                              adminNote: reason,
+                              adminRole: rolePick[u.id] ?? u.adminRole ?? "editor",
+                            });
+                            await reload();
+                          } catch (e) {
+                            alert((e as Error)?.message || "需要超级管理员令牌");
+                          }
+                        }}
+                      >
+                        更新角色
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>

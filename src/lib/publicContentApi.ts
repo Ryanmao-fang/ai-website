@@ -71,5 +71,24 @@ export const publicContentApi = {
     const payload = await getJson("/api/public/learning-paths");
     return ((payload as any)?.items || []) as any[];
   },
+
+  search: async (q: string, limit?: number): Promise<{
+    terms: any[];
+    tools: any[];
+    templates: any[];
+    learningPaths: any[];
+  }> => {
+    const qs = new URLSearchParams({ q: q.trim() });
+    if (limit != null) {
+      qs.set("limit", String(limit));
+    }
+    const payload = await getJson(`/api/public/search?${qs.toString()}`);
+    return {
+      terms: ((payload as any)?.terms || []) as any[],
+      tools: ((payload as any)?.tools || []) as any[],
+      templates: ((payload as any)?.templates || []) as any[],
+      learningPaths: ((payload as any)?.learningPaths || []) as any[],
+    };
+  },
 };
 

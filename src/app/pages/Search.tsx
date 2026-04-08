@@ -6,7 +6,8 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
-import { searchAllContent } from "@/lib/searchContent";
+import { searchAllContent, type SearchResults } from "@/lib/searchContent";
+import { publicContentApi } from "@/lib/publicContentApi";
 import { useAuth } from "../context/AuthContext";
 import { useLoginDialog } from "../context/LoginDialogContext";
 import { recordSearchQuery, listSearchHistory, clearSearchHistory } from "@/lib/searchHistory";
@@ -20,8 +21,18 @@ export function SearchPage() {
   const initialQ = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQ);
   const [history, setHistory] = useState<string[]>([]);
+  const [remoteResults, setRemoteResults] = useState<SearchResults | null>(null);
+  const [remoteLoading, setRemoteLoading] = useState(false);
   const { userId } = useAuth();
   const { openLogin } = useLoginDialog();
+
+  const resultTab = (() => {
+    const t = searchParams.get("type") || "all";
+    if ("terms" === t || "tools" === t || "templates" === t || "paths" === t || "all" === t) {
+      return t;
+    }
+    return "all";
+  })();
 
   useEffect(() => {
     setQuery(initialQ);
@@ -31,28 +42,88 @@ export function SearchPage() {
     setHistory(listSearchHistory());
   }, []);
 
-  const results = useMemo(() => searchAllContent(query || initialQ), [query, initialQ]);
-
   const effectiveQuery = (query || initialQ).trim();
+
+  useEffect(() => {
+    if (!effectiveQuery) {
+      setRemoteResults(null);
+      return;
+    }
+    let cancelled = false;
+    setRemoteLoading(true);
+    publicContentApi
+      .search(effectiveQuery, 60)
+      .then((raw) => {
+        if (cancelled) {
+          return;
+        }
+        setRemoteResults({
+          terms: raw.terms.map((t, i) => ({
+            kind: "term",
+            id: t.slug || `t-${i}`,
+            slug: t.slug,
+            name: t.name,
+            description: t.description,
+            category: t.category,
+          })),
+          tools: raw.tools.map((t, i) => ({
+            kind: "tool",
+            id: t.slug || `tl-${i}`,
+            slug: t.slug,
+            name: t.name,
+            description: t.description,
+            category: t.category,
+            icon: t.icon || "🧰",
+          })),
+          templates: raw.templates.map((tm) => ({
+            kind: "template",
+            id: tm.id,
+            title: tm.title,
+            scenario: tm.scenario,
+            category: tm.category,
+          })),
+          learningPaths: raw.learningPaths.map((p) => ({
+            kind: "learningPath",
+            slug: p.slug,
+            title: p.title,
+            description: p.description,
+          })),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRemoteResults(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRemoteLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveQuery]);
+
+  const staticResults = useMemo(() => searchAllContent(query || initialQ), [query, initialQ]);
+  const results = remoteResults ?? staticResults;
+
   const showTermsBlock = "all" === resultTab || "terms" === resultTab;
   const showToolsBlock = "all" === resultTab || "tools" === resultTab;
   const showTemplatesBlock = "all" === resultTab || "templates" === resultTab;
+  const showPathsBlock = "all" === resultTab || "paths" === resultTab;
   const total =
-    results.terms.length + results.tools.length + results.templates.length;
+    results.terms.length +
+    results.tools.length +
+    results.templates.length +
+    (results.learningPaths?.length || 0);
   const filteredTotal =
     (showTermsBlock ? results.terms.length : 0) +
     (showToolsBlock ? results.tools.length : 0) +
-    (showTemplatesBlock ? results.templates.length : 0);
+    (showTemplatesBlock ? results.templates.length : 0) +
+    (showPathsBlock ? results.learningPaths?.length || 0 : 0);
 
-  const resultTab = (() => {
-    const t = searchParams.get("type") || "all";
-    if ("terms" === t || "tools" === t || "templates" === t || "all" === t) {
-      return t;
-    }
-    return "all";
-  })();
-
-  const setResultTab = (t: "all" | "terms" | "tools" | "templates") => {
+  const setResultTab = (t: "all" | "terms" | "tools" | "templates" | "paths") => {
     const q = (query || initialQ).trim();
     if (!q) {
       return;
@@ -110,10 +181,10 @@ export function SearchPage() {
               <span className="text-sm">全站搜索</span>
             </div>
             <h1 className="text-3xl md:text-5xl font-semibold text-foreground mb-4 leading-tight">
-              搜索名词、工具与模板
+              搜索名词、工具、模板与路线
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              与首页相同的检索范围，一次找到相关内容
+              主结果来自 CMS 已发布内容；网络异常时回退本地词库
             </p>
           </motion.div>
 
@@ -187,9 +258,10 @@ export function SearchPage() {
             <p className="text-center text-muted-foreground">输入关键词后开始搜索，或使用上方「最近搜索」</p>
           ) : (
             <>
-              <p className="text-center text-muted-foreground mb-6">
+              <p className="text-center text-muted-foreground mb-2">
                 关键词「{effectiveQuery}」共找到 {total} 条结果
                 {"all" !== resultTab ? `，当前分类 ${filteredTotal} 条` : ""}
+                {remoteLoading ? "（同步 CMS…）" : remoteResults ? "（CMS）" : "（本地）"}
               </p>
 
               <div className="flex flex-wrap justify-center gap-2 mb-10">
@@ -199,6 +271,7 @@ export function SearchPage() {
                     { id: "terms" as const, label: "名词" },
                     { id: "tools" as const, label: "工具" },
                     { id: "templates" as const, label: "模板" },
+                    { id: "paths" as const, label: "学习路线" },
                   ] as const
                 ).map((tab) => (
                   <Button
@@ -241,11 +314,15 @@ export function SearchPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {results.terms.map((t, index) => {
-                      const termRow = getTermById(String(t.id));
-                      const termTo = termRow ? `/term/${termRow.slug}` : `/terms/${t.id}`;
+                      const termRow = t.slug ? null : getTermById(String(t.id));
+                      const termTo = t.slug
+                        ? `/terms/${t.slug}`
+                        : termRow
+                          ? `/term/${termRow.slug}`
+                          : `/terms/${t.id}`;
                       return (
                       <motion.div
-                        key={t.id}
+                        key={`term-${t.slug || t.id}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
@@ -284,11 +361,15 @@ export function SearchPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {results.tools.map((t, index) => {
-                      const toolRow = getToolById(String(t.id));
-                      const toolTo = toolRow ? `/tool/${toolRow.slug}` : `/tools/${t.id}`;
+                      const toolRow = t.slug ? null : getToolById(String(t.id));
+                      const toolTo = t.slug
+                        ? `/tools/${t.slug}`
+                        : toolRow
+                          ? `/tool/${toolRow.slug}`
+                          : `/tools/${t.id}`;
                       return (
                       <motion.div
-                        key={t.id}
+                        key={`tool-${t.slug || t.id}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
@@ -315,6 +396,39 @@ export function SearchPage() {
                       </motion.div>
                       );
                     })}
+                  </div>
+                </div>
+              ) : null}
+
+              {results.learningPaths && results.learningPaths.length > 0 && showPathsBlock ? (
+                <div className="mb-12">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-semibold text-foreground">学习路线</h2>
+                    <Badge variant="secondary" className="rounded-full border-0">
+                      {results.learningPaths.length}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {results.learningPaths.map((p, index) => (
+                      <motion.div
+                        key={p.slug}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                      >
+                        <Link to={`/learning-path?cmsSlug=${encodeURIComponent(p.slug)}`}>
+                          <Card className="rounded-3xl border-border p-6 hover:shadow-md transition-shadow h-full">
+                            <h3 className="font-semibold text-foreground mb-2">
+                              {highlightTextParts(p.title, effectiveQuery)}
+                            </h3>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {highlightTextParts(p.description, effectiveQuery)}
+                            </p>
+                          </Card>
+                        </Link>
+                      </motion.div>
+                    ))}
                   </div>
                 </div>
               ) : null}

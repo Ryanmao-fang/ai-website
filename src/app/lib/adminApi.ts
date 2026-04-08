@@ -33,6 +33,10 @@ export const adminApi = {
   updateTerm: (token: string, id: string, body: unknown) =>
     adminRequest(`/api/admin/terms/${encodeURIComponent(id)}`, token, { method: "PUT", body: JSON.stringify(body) }),
   deleteTerm: (token: string, id: string) => adminRequest(`/api/admin/terms/${encodeURIComponent(id)}`, token, { method: "DELETE" }),
+  batchTerms: (token: string, body: { ids: number[]; action: "publish" | "unpublish" | "delete" }) =>
+    adminRequest("/api/admin/terms/batch", token, { method: "POST", body: JSON.stringify(body) }),
+  importTerms: (token: string, body: { items: unknown[]; mode?: "upsert" | "insert_only" }) =>
+    adminRequest("/api/admin/terms/import", token, { method: "POST", body: JSON.stringify(body) }),
 
   listTools: (token: string, params?: { q?: string; status?: string }) => {
     const q = params?.q ? `q=${encodeURIComponent(params.q)}` : "";
@@ -47,6 +51,10 @@ export const adminApi = {
   updateTool: (token: string, id: string, body: unknown) =>
     adminRequest(`/api/admin/tools/${encodeURIComponent(id)}`, token, { method: "PUT", body: JSON.stringify(body) }),
   deleteTool: (token: string, id: string) => adminRequest(`/api/admin/tools/${encodeURIComponent(id)}`, token, { method: "DELETE" }),
+  batchTools: (token: string, body: { ids: number[]; action: "publish" | "unpublish" | "delete" }) =>
+    adminRequest("/api/admin/tools/batch", token, { method: "POST", body: JSON.stringify(body) }),
+  importTools: (token: string, body: { items: unknown[]; mode?: "upsert" | "insert_only" }) =>
+    adminRequest("/api/admin/tools/import", token, { method: "POST", body: JSON.stringify(body) }),
 
   listTemplates: (token: string, params?: { q?: string; status?: string }) => {
     const q = params?.q ? `q=${encodeURIComponent(params.q)}` : "";
@@ -61,6 +69,10 @@ export const adminApi = {
   updateTemplate: (token: string, id: string, body: unknown) =>
     adminRequest(`/api/admin/templates/${encodeURIComponent(id)}`, token, { method: "PUT", body: JSON.stringify(body) }),
   deleteTemplate: (token: string, id: string) => adminRequest(`/api/admin/templates/${encodeURIComponent(id)}`, token, { method: "DELETE" }),
+  batchTemplates: (token: string, body: { ids: number[]; action: "publish" | "unpublish" | "delete" }) =>
+    adminRequest("/api/admin/templates/batch", token, { method: "POST", body: JSON.stringify(body) }),
+  importTemplates: (token: string, body: { items: unknown[]; mode?: "upsert" | "insert_only" }) =>
+    adminRequest("/api/admin/templates/import", token, { method: "POST", body: JSON.stringify(body) }),
 
   listLearningPaths: (token: string, params?: { q?: string; status?: string }) => {
     const q = params?.q ? `q=${encodeURIComponent(params.q)}` : "";
@@ -77,6 +89,10 @@ export const adminApi = {
     adminRequest(`/api/admin/learning-paths/${encodeURIComponent(id)}`, token, { method: "PUT", body: JSON.stringify(body) }),
   deleteLearningPath: (token: string, id: string) =>
     adminRequest(`/api/admin/learning-paths/${encodeURIComponent(id)}`, token, { method: "DELETE" }),
+  batchLearningPaths: (token: string, body: { ids: number[]; action: "publish" | "unpublish" | "delete" }) =>
+    adminRequest("/api/admin/learning-paths/batch", token, { method: "POST", body: JSON.stringify(body) }),
+  importLearningPaths: (token: string, body: { items: unknown[]; mode?: "upsert" | "insert_only" }) =>
+    adminRequest("/api/admin/learning-paths/import", token, { method: "POST", body: JSON.stringify(body) }),
 
   createAssetUploadUrl: (token: string, body: unknown) =>
     adminRequest("/api/admin/assets/upload-url", token, { method: "POST", body: JSON.stringify(body) }),
@@ -117,5 +133,45 @@ export const adminApi = {
   },
   updateTicket: (token: string, id: string, body: unknown) =>
     adminRequest(`/api/admin/tickets/${encodeURIComponent(id)}`, token, { method: "POST", body: JSON.stringify(body) }),
+
+  workflowTransition: (
+    token: string,
+    resource: "terms" | "tools" | "templates" | "learning-paths",
+    id: string,
+    body: { action: string; note?: string }
+  ) =>
+    adminRequest(
+      `/api/admin/workflow/${resource}/${encodeURIComponent(id)}/transition`,
+      token,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+
+  workflowSchedule: (
+    token: string,
+    resource: "terms" | "tools" | "templates" | "learning-paths",
+    id: string,
+    body: { publishAt?: string | null; unpublishAt?: string | null }
+  ) =>
+    adminRequest(
+      `/api/admin/workflow/${resource}/${encodeURIComponent(id)}/schedule`,
+      token,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+
+  opsOverview: (token: string) => adminRequest("/api/admin/ops/overview", token, { method: "GET" }),
+
+  opsAuditLogs: (token: string, limit?: number) => {
+    const q = limit ? `?limit=${limit}` : "";
+    return adminRequest(`/api/admin/ops/audit-logs${q}`, token, { method: "GET" });
+  },
+
+  opsRunScheduleOnce: (token: string) =>
+    adminRequest("/api/admin/ops/schedule/run-once", token, { method: "POST", body: "{}" }),
+
+  termQuality: (token: string, id: string) =>
+    adminRequest(`/api/admin/terms/${encodeURIComponent(id)}/quality`, token, { method: "GET" }),
+
+  toolQuality: (token: string, id: string) =>
+    adminRequest(`/api/admin/tools/${encodeURIComponent(id)}/quality`, token, { method: "GET" }),
 };
 

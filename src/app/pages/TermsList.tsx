@@ -60,17 +60,10 @@ export function TermsList() {
   }, []);
 
   const terms = useMemo(() => {
-    if (!cmsTerms || 0 === cmsTerms.length) {
-      return localTerms;
+    if (cmsTerms && cmsTerms.length > 0) {
+      return cmsTerms;
     }
-    const bySlug = new Map<string, any>();
-    for (const item of localTerms) {
-      bySlug.set(item.slug, item);
-    }
-    for (const item of cmsTerms) {
-      bySlug.set(item.slug, item);
-    }
-    return Array.from(bySlug.values());
+    return localTerms;
   }, [cmsTerms, localTerms]);
 
   useEffect(() => {

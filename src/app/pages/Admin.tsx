@@ -193,6 +193,7 @@ function AdminGateInner() {
   }
 
   const navItems = [
+    { to: "/admin/ops", label: "运营看板" },
     { to: "/admin/terms", label: "名词" },
     { to: "/admin/tools", label: "工具" },
     { to: "/admin/templates", label: "模板" },

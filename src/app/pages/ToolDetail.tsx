@@ -25,7 +25,12 @@ import { recordBrowseEntry } from "@/lib/browseHistory";
 import { apiClient } from "@/lib/api";
 import { PageMeta } from "../components/PageMeta";
 import { publicContentApi } from "@/lib/publicContentApi";
-import { renderMarkdownBasic } from "@/lib/markdownBasic";
+import {
+  extractBilibiliEmbedFromMarkdown,
+  extractFirstVideoUrlFromMarkdown,
+  extractYoutubeIdFromMarkdown,
+  renderMarkdownBasic,
+} from "@/lib/markdownBasic";
 
 export function ToolDetail() {
   const { id } = useParams();
@@ -61,35 +66,54 @@ export function ToolDetail() {
     };
   }, [id]);
 
-  const tool =
-    localTool ||
-    (cmsTool
-      ? {
-          id: -1,
-          slug: String(cmsTool.slug || id || ""),
-          name: String(cmsTool.name || ""),
-          description: String(cmsTool.description || ""),
-          icon: String(cmsTool.icon || "🧰"),
-          category: String(cmsTool.category || ""),
-          tags: (cmsTool.tags || []) as string[],
-          rating: Number(cmsTool.rating || 0),
-          link: String(cmsTool.link || ""),
-          platform: String(cmsTool.platform || ""),
-          openSource: Boolean(cmsTool.open_source),
-          priceTier: cmsTool.price_tier || "freemium",
-          suitableFor: String(cmsTool.suitable_for || ""),
-          disclaimer: String(cmsTool.disclaimer || ""),
-          fullDescription: String(cmsTool.description || ""),
-          useCases: [] as any[],
-          howToUse: [] as any[],
-          relatedToolIds: [] as number[],
-        }
-      : null);
+  const tool = cmsTool
+    ? {
+        id: -1,
+        slug: String(cmsTool.slug || id || ""),
+        name: String(cmsTool.name || ""),
+        description: String(cmsTool.description || ""),
+        icon: String(cmsTool.icon || "🧰"),
+        category: String(cmsTool.category || ""),
+        tags: (cmsTool.tags || []) as string[],
+        rating: Number(cmsTool.rating || 0),
+        link: String(cmsTool.link || ""),
+        platform: String(cmsTool.platform || ""),
+        openSource: Boolean(cmsTool.open_source),
+        priceTier: cmsTool.price_tier || "freemium",
+        suitableFor: String(cmsTool.suitable_for || ""),
+        disclaimer: String(cmsTool.disclaimer || ""),
+        fullDescription: String(cmsTool.description || ""),
+        useCases: ((cmsTool.content_json && (cmsTool.content_json as any).useCases) || []) as any[],
+        howToUse: ((cmsTool.content_json && (cmsTool.content_json as any).howToUse) || []) as any[],
+        relatedToolIds: ((cmsTool.content_json && (cmsTool.content_json as any).relatedToolIds) || []) as number[],
+      }
+    : localTool || null;
 
   const cmsMarkdown = String(cmsTool?.content_markdown || "");
   const previewLen = cmsMarkdown ? Math.min(1800, Math.max(700, Math.floor(cmsMarkdown.length * 0.25))) : 0;
   const cmsPreview = cmsMarkdown ? cmsMarkdown.slice(0, previewLen) : "";
   const cmsRest = cmsMarkdown ? cmsMarkdown.slice(previewLen) : "";
+  const heroBilibili = cmsMarkdown ? extractBilibiliEmbedFromMarkdown(cmsMarkdown) : null;
+  const heroBilibiliPlayerSrc =
+    heroBilibili && "bvid" in heroBilibili
+      ? `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(heroBilibili.bvid)}&high_quality=1&danmaku=0&autoplay=0`
+      : heroBilibili && "aid" in heroBilibili
+        ? `https://player.bilibili.com/player.html?aid=${encodeURIComponent(heroBilibili.aid)}&high_quality=1&danmaku=0&autoplay=0&page=1`
+        : "";
+  const heroVideoFileUrl = cmsMarkdown ? extractFirstVideoUrlFromMarkdown(cmsMarkdown) : null;
+  const heroYoutubeId = cmsMarkdown ? extractYoutubeIdFromMarkdown(cmsMarkdown) : null;
+
+  useEffect(() => {
+    if (!tool) {
+      return;
+    }
+    recordBrowseEntry({
+      type: "tool",
+      id: tool.slug || String(tool.id),
+      title: tool.name,
+      category: tool.category,
+    });
+  }, [tool]);
 
   if (!tool) {
     if (cmsLoading) {
@@ -101,18 +125,6 @@ export function ToolDetail() {
     }
     return <Navigate to="/not-found" replace />;
   }
-
-  useEffect(() => {
-    if (!tool || tool.id <= 0) {
-      return;
-    }
-    recordBrowseEntry({
-      type: "tool",
-      id: tool.id,
-      title: tool.name,
-      category: tool.category,
-    });
-  }, [tool]);
 
   const refreshFavorite = useCallback(async () => {
     if (!accessToken || !tool || tool.id <= 0 || !tierMeetsMin(membershipTier, "standard")) {
@@ -384,9 +396,44 @@ export function ToolDetail() {
               <Film className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-semibold text-foreground">5分钟上手视频</h2>
             </div>
-            <div className="rounded-2xl border border-dashed border-border p-8 text-sm text-muted-foreground">
-              可在 CMS 内容中嵌入视频链接，这里展示播放器占位区。
-            </div>
+            {heroBilibili && heroBilibiliPlayerSrc ? (
+              <div className="aspect-video w-full max-w-3xl rounded-2xl overflow-hidden border border-border bg-black/90">
+                <iframe
+                  className="w-full h-full"
+                  title={`${tool.name} 上手视频`}
+                  src={heroBilibiliPlayerSrc}
+                  allow="fullscreen; autoplay; clipboard-write"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            ) : heroVideoFileUrl ? (
+              <video
+                className="w-full max-w-3xl rounded-2xl border border-border bg-black/80"
+                controls
+                playsInline
+                preload="metadata"
+                src={heroVideoFileUrl}
+              >
+                您的浏览器不支持视频播放
+              </video>
+            ) : heroYoutubeId ? (
+              <div className="aspect-video w-full max-w-3xl rounded-2xl overflow-hidden border border-border bg-black/90">
+                <iframe
+                  className="w-full h-full"
+                  src={`https://www.youtube-nocookie.com/embed/${heroYoutubeId}`}
+                  title={`${tool.name} 上手视频（YouTube）`}
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border p-8 text-sm text-muted-foreground">
+                在后台「工具 → 正文 Markdown」中：优先单独一行粘贴
+                <strong className="font-medium text-foreground"> B 站视频页链接</strong>
+                ，或上传 .mp4 等直链视频；YouTube 仅作可选（境内多数网络无法播放）。
+              </div>
+            )}
           </Card>
 
           {cmsMarkdown ? (
