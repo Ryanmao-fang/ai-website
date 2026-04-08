@@ -5,6 +5,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
+import { toolsCatalog } from "@/content/toolsCatalog";
 
 type ToolRow = {
   id: number;
@@ -243,6 +244,27 @@ export function AdminTools() {
             </button>
           ))}
         </div>
+        {0 === filtered.length ? (
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-xs text-muted-foreground mb-2">
+              当前 CMS 暂无数据。以下展示主站静态工具库（只读），需迁移到 CMS 后才可在后台编辑发布。
+            </p>
+            <div className="space-y-2 max-h-80 overflow-auto pr-1">
+              {toolsCatalog.slice(0, 120).map((t) => (
+                <div key={t.id} className="rounded-2xl border border-border p-3 bg-muted/20">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="rounded-full border-0 text-xs">
+                      static
+                    </Badge>
+                    <span className="text-sm font-medium text-foreground">{t.name}</span>
+                    <span className="text-xs text-muted-foreground">/{t.slug}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{t.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </Card>
     </div>
   );

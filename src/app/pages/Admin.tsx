@@ -19,6 +19,7 @@ function AdminGateInner() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [authErr, setAuthErr] = useState("");
   const [lastSyncAt, setLastSyncAt] = useState<number>(0);
   const location = useLocation();
   const navigate = useNavigate();
@@ -45,15 +46,27 @@ function AdminGateInner() {
       }
       try {
         const payload = await adminApi.me(token);
-        const me = (payload as { admin?: { username?: string; adminNote?: string } })?.admin;
+        const me = (payload as { admin?: { userId?: string; username?: string; adminNote?: string } })?.admin;
         if (!cancelled) {
+          if (me?.userId && userId && String(me.userId) !== String(userId)) {
+            setAuthErr("当前站点账号与后台令牌不一致，请重新登录管理台。");
+            setToken(null, null);
+            return;
+          }
           setAdminMe({
             username: String(me?.username || ""),
             adminNote: String(me?.adminNote || ""),
           });
+          setAuthErr("");
         }
       } catch (e) {
         if (!cancelled) {
+          const status = (e as Error & { status?: number })?.status;
+          if (401 === status || 403 === status) {
+            setAuthErr("后台权限校验失败（可能未授予 is_admin 或令牌失效），请重新登录管理台。");
+            setToken(null, null);
+            return;
+          }
           setAdminMe(null);
         }
       }
@@ -61,7 +74,7 @@ function AdminGateInner() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, setToken, userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +149,7 @@ function AdminGateInner() {
             </div>
 
             <div className="space-y-3">
+              {authErr ? <p className="text-sm text-destructive">{authErr}</p> : null}
               <div>
                 <p className="text-xs text-muted-foreground mb-1">账号</p>
                 <Input value={username} onChange={(e) => setUsername(e.target.value)} className="rounded-full" />
