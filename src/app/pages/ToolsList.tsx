@@ -89,8 +89,21 @@ export function ToolsList() {
   }, []);
 
   const list = cmsList && cmsList.length > 0 ? cmsList : localList;
+  const mergedList = useMemo(() => {
+    if (!cmsList || 0 === cmsList.length) {
+      return localList;
+    }
+    const bySlug = new Map<string, any>();
+    for (const item of localList) {
+      bySlug.set(item.slug, item);
+    }
+    for (const item of cmsList) {
+      bySlug.set(item.slug, item);
+    }
+    return Array.from(bySlug.values());
+  }, [cmsList, localList]);
 
-  const filteredTools = list.filter((tool) => {
+  const filteredTools = mergedList.filter((tool) => {
     const matchesSearch =
       tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -214,8 +227,12 @@ export function ToolsList() {
             >
               <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-6 bg-white group">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                    {tool.icon}
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform overflow-hidden">
+                    {String(tool.icon || "").startsWith("http") ? (
+                      <img src={tool.icon} alt={tool.name} className="w-full h-full object-cover" />
+                    ) : (
+                      tool.icon
+                    )}
                   </div>
                   <a
                     href={tool.link}

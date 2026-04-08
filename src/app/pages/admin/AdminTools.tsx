@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { toolsCatalog } from "@/content/toolsCatalog";
+import { Link } from "react-router";
 
 type ToolRow = {
   id: number;
@@ -65,6 +66,26 @@ export function AdminTools() {
       await reload();
     } catch (e) {
       setError((e as Error)?.message || "保存失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeEditing = async () => {
+    if (!token || !editing?.id) {
+      return;
+    }
+    if (!window.confirm(`确认删除工具「${editing.name || editing.slug}」吗？`)) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.deleteTool(token, String(editing.id));
+      setEditing(null);
+      await reload();
+    } catch (e) {
+      setError((e as Error)?.message || "删除失败");
     } finally {
       setLoading(false);
     }
@@ -162,7 +183,20 @@ export function AdminTools() {
         <Card className="rounded-3xl border-border p-5 bg-white space-y-3">
           <div className="flex items-center justify-between">
             <p className="font-semibold text-foreground">{editing.id ? `编辑 #${editing.id}` : "新建工具"}</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              {editing.slug ? (
+                <Link to={`/tool/${editing.slug}`} target="_blank" className="text-xs text-primary hover:underline">
+                  打开主站页面
+                </Link>
+              ) : null}
+              <Link to="/admin/assets" className="text-xs text-primary hover:underline">
+                去素材库上传Logo
+              </Link>
+              {editing.id ? (
+                <Button variant="outline" className="rounded-full text-destructive" onClick={() => void removeEditing()} disabled={loading}>
+                  删除
+                </Button>
+              ) : null}
               <Button variant="outline" className="rounded-full" onClick={() => setEditing(null)}>
                 取消
               </Button>
@@ -183,6 +217,14 @@ export function AdminTools() {
             <div>
               <p className="text-xs text-muted-foreground mb-1">分类</p>
               <Input value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="rounded-full" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">图标（emoji 或 图片URL）</p>
+              <Input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} className="rounded-full" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">官网链接</p>
+              <Input value={editing.link} onChange={(e) => setEditing({ ...editing, link: e.target.value })} className="rounded-full" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1">状态</p>

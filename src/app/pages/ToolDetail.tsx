@@ -272,8 +272,12 @@ export function ToolDetail() {
           >
             <Card className="rounded-3xl border-border p-8 bg-white">
               <div className="flex items-start gap-6">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-5xl flex-shrink-0">
-                  {tool.icon}
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-5xl flex-shrink-0 overflow-hidden">
+                  {String(tool.icon || "").startsWith("http") ? (
+                    <img src={tool.icon} alt={tool.name} className="w-full h-full object-cover" />
+                  ) : (
+                    tool.icon
+                  )}
                 </div>
                 <div className="flex-1">
                   <Badge className="rounded-full bg-primary/10 text-primary border-0 mb-3">

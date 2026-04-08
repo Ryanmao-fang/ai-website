@@ -19,7 +19,9 @@ export function TermsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [favoriteIdSet, setFavoriteIdSet] = useState<Set<string>>(new Set());
-  const [cmsTerms, setCmsTerms] = useState<{ slug: string; name: string; description: string; category: string; likes?: number }[] | null>(null);
+  const [cmsTerms, setCmsTerms] = useState<
+    { id: number; slug: string; name: string; description: string; category: string; likes?: number }[] | null
+  >(null);
 
   const categories = ["全部", "基础概念", "技术原理", "应用场景", "实用技能"];
   const localTerms = listTermsSummary();
@@ -34,7 +36,8 @@ export function TermsList() {
         }
         if (items && items.length > 0) {
           setCmsTerms(
-            items.map((t) => ({
+            items.map((t, idx) => ({
+              id: 100000 + idx,
               slug: t.slug,
               name: t.name,
               description: t.description,
@@ -56,7 +59,19 @@ export function TermsList() {
     };
   }, []);
 
-  const terms = cmsTerms && cmsTerms.length > 0 ? cmsTerms : localTerms;
+  const terms = useMemo(() => {
+    if (!cmsTerms || 0 === cmsTerms.length) {
+      return localTerms;
+    }
+    const bySlug = new Map<string, any>();
+    for (const item of localTerms) {
+      bySlug.set(item.slug, item);
+    }
+    for (const item of cmsTerms) {
+      bySlug.set(item.slug, item);
+    }
+    return Array.from(bySlug.values());
+  }, [cmsTerms, localTerms]);
 
   useEffect(() => {
     let cancelled = false;

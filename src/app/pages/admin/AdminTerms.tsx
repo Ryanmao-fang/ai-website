@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { termsCatalog } from "@/content/termsCatalog";
+import { Link } from "react-router";
 
 type TermRow = {
   id: number;
@@ -65,6 +66,26 @@ export function AdminTerms() {
       await reload();
     } catch (e) {
       setError((e as Error)?.message || "保存失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeEditing = async () => {
+    if (!token || !editing?.id) {
+      return;
+    }
+    if (!window.confirm(`确认删除名词「${editing.name || editing.slug}」吗？`)) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.deleteTerm(token, String(editing.id));
+      setEditing(null);
+      await reload();
+    } catch (e) {
+      setError((e as Error)?.message || "删除失败");
     } finally {
       setLoading(false);
     }
@@ -148,7 +169,17 @@ export function AdminTerms() {
         <Card className="rounded-3xl border-border p-5 bg-white space-y-3">
           <div className="flex items-center justify-between">
             <p className="font-semibold text-foreground">{editing.id ? `编辑 #${editing.id}` : "新建名词"}</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              {editing.slug ? (
+                <Link to={`/term/${editing.slug}`} target="_blank" className="text-xs text-primary hover:underline">
+                  打开主站页面
+                </Link>
+              ) : null}
+              {editing.id ? (
+                <Button variant="outline" className="rounded-full text-destructive" onClick={() => void removeEditing()} disabled={loading}>
+                  删除
+                </Button>
+              ) : null}
               <Button variant="outline" className="rounded-full" onClick={() => setEditing(null)}>
                 取消
               </Button>

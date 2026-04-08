@@ -69,6 +69,26 @@ export function AdminLearningPaths() {
     }
   };
 
+  const removeEditing = async () => {
+    if (!token || !editing?.id) {
+      return;
+    }
+    if (!window.confirm(`确认删除学习路线「${editing.title || editing.slug}」吗？`)) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.deleteLearningPath(token, String(editing.id));
+      setEditing(null);
+      await reload();
+    } catch (e) {
+      setError((e as Error)?.message || "删除失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openEditorById = async (id: number) => {
     if (!token) {
       return;
@@ -149,6 +169,11 @@ export function AdminLearningPaths() {
           <div className="flex items-center justify-between">
             <p className="font-semibold text-foreground">{editing.id ? `编辑 #${editing.id}` : "新建学习路线"}</p>
             <div className="flex gap-2">
+                {editing.id ? (
+                  <Button variant="outline" className="rounded-full text-destructive" onClick={() => void removeEditing()} disabled={loading}>
+                    删除
+                  </Button>
+                ) : null}
               <Button variant="outline" className="rounded-full" onClick={() => setEditing(null)}>
                 取消
               </Button>

@@ -69,6 +69,57 @@ export function AdminTemplates() {
     }
   };
 
+  const removeEditing = async () => {
+    if (!token || !editing?.id) {
+      return;
+    }
+    if (!window.confirm(`确认删除模板「${editing.title}」吗？`)) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.deleteTemplate(token, String(editing.id));
+      setEditing(null);
+      await reload();
+    } catch (e) {
+      setError((e as Error)?.message || "删除失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditorById = async (id: number) => {
+    if (!token) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const payload = await adminApi.getTemplate(token, String(id));
+      const item = (payload as any)?.item;
+      if (!item) {
+        throw new Error("未获取到详情数据");
+      }
+      setEditing({
+        id: item.id,
+        title: item.title || "",
+        scenario: item.scenario || "",
+        category: item.category || "",
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        minTier: item.min_tier || "standard",
+        contentMarkdown: item.content_markdown || "",
+        contentJson: item.content_json || {},
+        status: item.status || "draft",
+        contentVersion: item.content_version || "",
+      });
+    } catch (e) {
+      setError((e as Error)?.message || "加载详情失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl border-border p-5 bg-white">
@@ -115,6 +166,11 @@ export function AdminTemplates() {
           <div className="flex items-center justify-between">
             <p className="font-semibold text-foreground">{editing.id ? `编辑 #${editing.id}` : "新建模板"}</p>
             <div className="flex gap-2">
+                {editing.id ? (
+                  <Button variant="outline" className="rounded-full text-destructive" onClick={() => void removeEditing()} disabled={loading}>
+                    删除
+                  </Button>
+                ) : null}
               <Button variant="outline" className="rounded-full" onClick={() => setEditing(null)}>
                 取消
               </Button>
@@ -186,7 +242,7 @@ export function AdminTemplates() {
               key={t.id}
               type="button"
               className="w-full text-left rounded-2xl border border-border p-4 hover:bg-muted/30"
-              onClick={() => setEditing({ ...t, minTier: t.min_tier, contentMarkdown: "", contentJson: {}, contentVersion: "" })}
+              onClick={() => void openEditorById(t.id)}
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
