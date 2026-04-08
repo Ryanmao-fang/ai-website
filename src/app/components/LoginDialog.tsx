@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Mail } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 interface LoginDialogProps {
   open: boolean;
@@ -28,6 +29,7 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreeLegal, setAgreeLegal] = useState(false);
 
   const handleSignIn = async () => {
     setErrorText("");
@@ -48,9 +50,43 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
     }
   };
 
+  const handleResetPassword = async () => {
+    setErrorText("");
+    setSuccessText("");
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setErrorText("请先填写注册时使用的邮箱");
+      return;
+    }
+    setLoading(true);
+    try {
+      const redirectTo = `${window.location.origin}/`;
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo,
+      });
+      if (error) {
+        setErrorText(error.message);
+      } else {
+        setSuccessText("重置邮件已发送，请到邮箱点击链接并按提示设置新密码。");
+      }
+    } catch (error) {
+      setErrorText((error as Error)?.message || "发送失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignUp = async () => {
     setErrorText("");
     setSuccessText("");
+    if (!agreeLegal) {
+      setErrorText("请勾选同意用户协议与隐私政策");
+      return;
+    }
+    if (password.length < 8) {
+      setErrorText("密码建议至少 8 位，混合字母与数字更安全");
+      return;
+    }
     if (password !== confirmPassword) {
       setErrorText("两次密码不一致");
       return;
@@ -88,12 +124,17 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
           </DialogHeader>
 
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50 p-1 rounded-full">
               <TabsTrigger value="login" className="rounded-full">
                 <Mail className="w-4 h-4 mr-2" />
-                登录
+                邮箱
               </TabsTrigger>
-              <TabsTrigger value="register" className="rounded-full">注册</TabsTrigger>
+              <TabsTrigger value="register" className="rounded-full">
+                注册
+              </TabsTrigger>
+              <TabsTrigger value="phone" className="rounded-full text-xs sm:text-sm">
+                手机
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login" className="space-y-4">
@@ -125,6 +166,24 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
                 disabled={loading}
               >
                 {loading ? "登录中..." : "登录"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full rounded-full text-muted-foreground"
+                onClick={() => void handleResetPassword()}
+                disabled={loading}
+              >
+                忘记密码？邮件重置
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="phone" className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                短信登录/微信扫码依赖运营商与备案主体资质，当前为预留入口。请暂时使用邮箱注册；企业批量接入可邮联运营。
+              </p>
+              <Button type="button" variant="outline" className="w-full rounded-full border-border" disabled>
+                即将开放
               </Button>
             </TabsContent>
 
@@ -162,6 +221,24 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
                   className="rounded-2xl border-border bg-input-background"
                 />
               </div>
+              <label className="flex items-start gap-2 text-sm text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1 rounded border-border"
+                  checked={agreeLegal}
+                  onChange={(e) => setAgreeLegal(e.target.checked)}
+                />
+                <span>
+                  我已阅读并同意
+                  <Link to="/legal/user-agreement" className="text-primary hover:underline mx-1">
+                    用户协议
+                  </Link>
+                  与
+                  <Link to="/legal/privacy-policy" className="text-primary hover:underline mx-1">
+                    隐私政策
+                  </Link>
+                </span>
+              </label>
               <Button
                 className="w-full rounded-full bg-primary hover:bg-accent mt-2"
                 onClick={handleSignUp}
@@ -176,14 +253,15 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
           {successText ? <p className="text-sm text-emerald-600 mt-3">{successText}</p> : null}
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            登录即表示同意
+            登录即视为已知晓
             <Link to="/legal/user-agreement" className="text-primary hover:underline">
               用户协议
             </Link>
-            和
+            与
             <Link to="/legal/privacy-policy" className="text-primary hover:underline">
               隐私政策
             </Link>
+            摘要条款；完整内容见站内法务页。
           </p>
         </motion.div>
       </DialogContent>

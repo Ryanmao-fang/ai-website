@@ -8,75 +8,27 @@ import { motion } from "motion/react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useAuth } from "../context/AuthContext";
 import { useLoginDialog } from "../context/LoginDialogContext";
+import { termsCatalog } from "@/content/termsCatalog";
+import { toolsCatalog } from "@/content/toolsCatalog";
+import { homeLearningPathPreviewCounts } from "@/content/learningPathConfig";
+import { featuredTermIds, featuredToolIds } from "@/content/featured";
+import { useState } from "react";
+import { PageMeta } from "../components/PageMeta";
+import { siteConfig } from "@/lib/siteConfig";
+
+const featuredTerms = featuredTermIds
+  .map((id) => termsCatalog.find((t) => t.id === id))
+  .filter(Boolean) as typeof termsCatalog;
+const featuredTools = featuredToolIds
+  .map((id) => toolsCatalog.find((t) => t.id === id))
+  .filter(Boolean) as typeof toolsCatalog;
+const learningPaths = homeLearningPathPreviewCounts();
 
 export function Home() {
   const { userId } = useAuth();
   const { openLogin } = useLoginDialog();
   const navigate = useNavigate();
-
-  const featuredTerms = [
-    {
-      id: 1,
-      name: "大语言模型 (LLM)",
-      description: "能够理解和生成人类语言的AI模型",
-      category: "基础概念",
-      image:
-        "https://images.unsplash.com/photo-1719550371336-7bb64b5cacfa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxicmFpbiUyMG5ldXJhbCUyMG5ldHdvcmslMjBkaWdpdGFsfGVufDF8fHx8MTc3NTU0OTA3OXww&ixlib=rb-4.1.0&q=80&w=1080",
-    },
-    {
-      id: 2,
-      name: "神经网络",
-      description: "模仿人脑结构的计算模型",
-      category: "技术原理",
-      image:
-        "https://images.unsplash.com/photo-1775185172785-4bbd6b0fc8f5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlJTIwYWJzdHJhY3QlMjB0ZWNobm9sb2d5fGVufDF8fHx8MTc3NTQ3OTY0Mnww&ixlib=rb-4.1.0&q=80&w=1080",
-    },
-    {
-      id: 3,
-      name: "Prompt Engineering",
-      description: "与AI对话的艺术与技巧",
-      category: "实用技能",
-      image:
-        "https://images.unsplash.com/photo-1762330467572-5199bc772a20?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuYXR1cmFsJTIwbGFuZ3VhZ2UlMjBwcm9jZXNzaW5nJTIwdGV4dHxlbnwxfHx8fDE3NzU0NjEwNDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    },
-  ];
-
-  const featuredTools = [
-    {
-      id: 1,
-      name: "ChatGPT",
-      description: "OpenAI的对话式AI助手",
-      tags: ["对话", "写作", "编程"],
-      icon: "💬",
-    },
-    {
-      id: 2,
-      name: "Midjourney",
-      description: "文字生成精美图片",
-      tags: ["图像", "设计", "创作"],
-      icon: "🎨",
-    },
-    {
-      id: 3,
-      name: "Claude",
-      description: "Anthropic的智能助手",
-      tags: ["分析", "写作", "翻译"],
-      icon: "🤖",
-    },
-    {
-      id: 4,
-      name: "Notion AI",
-      description: "智能笔记与写作助手",
-      tags: ["笔记", "协作", "总结"],
-      icon: "📝",
-    },
-  ];
-
-  const learningPaths = [
-    { level: "入门", items: 12, icon: "🌱", color: "bg-emerald-100 text-emerald-700" },
-    { level: "进阶", items: 18, icon: "🌿", color: "bg-teal-100 text-teal-700" },
-    { level: "高阶", items: 24, icon: "🌳", color: "bg-green-100 text-green-700" },
-  ];
+  const [heroQuery, setHeroQuery] = useState("");
 
   const termCard = (term: (typeof featuredTerms)[0], index: number) => (
     <Card className="overflow-hidden rounded-3xl border-border hover:shadow-lg transition-all group cursor-pointer">
@@ -123,9 +75,22 @@ export function Home() {
     </Card>
   );
 
+  const goSearchOrExplore = () => {
+    const q = heroQuery.trim();
+    if (q) {
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+      return;
+    }
+    if (!userId) {
+      openLogin();
+    } else {
+      navigate("/terms");
+    }
+  };
+
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      <PageMeta title="首页" description={`${siteConfig.tagline}——AI 名词、工具与学习路线。`} />
       <section className="relative overflow-hidden py-20 md:py-32">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
@@ -153,6 +118,14 @@ export function Home() {
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
+                  value={heroQuery}
+                  onChange={(e) => setHeroQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      goSearchOrExplore();
+                    }
+                  }}
                   placeholder="搜索AI名词、工具..."
                   className="pl-12 h-14 rounded-full border-border bg-white shadow-sm"
                 />
@@ -160,15 +133,9 @@ export function Home() {
               <Button
                 type="button"
                 className="rounded-full h-14 px-8 bg-primary hover:bg-accent shadow-sm"
-                onClick={() => {
-                  if (!userId) {
-                    openLogin();
-                  } else {
-                    navigate("/terms");
-                  }
-                }}
+                onClick={goSearchOrExplore}
               >
-                开始探索
+                {heroQuery.trim() ? "搜索" : "开始探索"}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
@@ -176,7 +143,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Featured Terms */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
@@ -229,7 +195,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Featured Tools */}
       <section className="py-16 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
@@ -282,7 +247,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Learning Path */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -297,16 +261,37 @@ export function Home() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
               >
-                <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-8 text-center group cursor-pointer">
-                  <div className="text-5xl mb-4">{path.icon}</div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">{path.level}</h3>
-                  <p className="text-muted-foreground mb-4">{path.items} 个学习内容</p>
-                  <Badge className={`rounded-full ${path.color} border-0`}>
-                    {path.level === "入门" && "从零开始"}
-                    {path.level === "进阶" && "深入理解"}
-                    {path.level === "高阶" && "融会贯通"}
-                  </Badge>
-                </Card>
+                {!userId ? (
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => openLogin()}
+                  >
+                    <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-8 text-center group cursor-pointer">
+                      <div className="text-5xl mb-4">{path.icon}</div>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">{path.level}</h3>
+                      <p className="text-muted-foreground mb-4">{path.items} 个学习内容</p>
+                      <Badge className={`rounded-full ${path.color} border-0`}>
+                        {path.level === "入门" && "从零开始"}
+                        {path.level === "进阶" && "深入理解"}
+                        {path.level === "高阶" && "融会贯通"}
+                      </Badge>
+                    </Card>
+                  </button>
+                ) : (
+                  <Link to={`/learning-path#${path.level === "入门" ? "beginner" : path.level === "进阶" ? "intermediate" : "advanced"}`}>
+                    <Card className="rounded-3xl border-border hover:shadow-lg transition-all p-8 text-center group cursor-pointer">
+                      <div className="text-5xl mb-4">{path.icon}</div>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">{path.level}</h3>
+                      <p className="text-muted-foreground mb-4">{path.items} 个学习内容</p>
+                      <Badge className={`rounded-full ${path.color} border-0`}>
+                        {path.level === "入门" && "从零开始"}
+                        {path.level === "进阶" && "深入理解"}
+                        {path.level === "高阶" && "融会贯通"}
+                      </Badge>
+                    </Card>
+                  </Link>
+                )}
               </motion.div>
             ))}
           </div>
@@ -331,7 +316,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Templates CTA */}
       <section className="py-20 bg-gradient-to-br from-primary/10 via-accent/5 to-transparent">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
@@ -367,6 +351,30 @@ export function Home() {
               </Link>
             )}
           </motion.div>
+        </div>
+      </section>
+
+      <section className="py-16 bg-white border-t border-border">
+        <div className="max-w-5xl mx-auto px-4 text-center text-sm text-muted-foreground space-y-3 leading-relaxed">
+          <p className="font-medium text-foreground">信任与合规</p>
+          <p>
+            运营主体：{siteConfig.companyLegalName} · 客服：{siteConfig.supportEmail} · {siteConfig.businessHours}
+          </p>
+          <p>站内不展示未经核实的用户数、评价或媒体报道；商务合作与资质材料请通过联系页面沟通。</p>
+          <div className="flex flex-wrap justify-center gap-4 text-primary">
+            <Link to="/legal/user-agreement" className="hover:underline">
+              用户协议
+            </Link>
+            <Link to="/legal/privacy-policy" className="hover:underline">
+              隐私政策
+            </Link>
+            <Link to="/contact" className="hover:underline">
+              联系我们
+            </Link>
+            <Link to="/changelog" className="hover:underline">
+              更新日志
+            </Link>
+          </div>
         </div>
       </section>
     </div>

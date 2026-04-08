@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
-import { Check, Crown, Sparkles, Star } from "lucide-react";
+import { Link, useLocation } from "react-router";
+import { Check, Crown, Sparkles, Star, LifeBuoy } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiNetworkError } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ export function Membership() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [processingPlan, setProcessingPlan] = useState<string>("");
   const [payChannel, setPayChannel] = useState<PayChannel>(
-    import.meta.env.DEV ? "mock" : "wechat_native"
+    import.meta.env.DEV ? "mock" : "alipay_pc"
   );
   const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
   const [wechatCodeUrl, setWechatCodeUrl] = useState("");
@@ -114,7 +114,18 @@ export function Membership() {
         pollOrderUntilPaid(String(result.orderId));
       }
     } catch (error) {
-      alert((error as Error).message || "开通失败");
+      if (error instanceof ApiNetworkError) {
+        alert(error.message);
+      } else {
+        const msg = (error as Error)?.message || "";
+        if (msg.toLowerCase().includes("fetch") || msg.includes("网络")) {
+          alert(
+            "无法连接支付服务。请稍后重试，或按页面下方「支付自助排查」逐项核对；仍失败请联系客服并附上大致时间。"
+          );
+        } else {
+          alert(msg || "开通失败");
+        }
+      }
     } finally {
       setProcessingPlan("");
     }
@@ -201,30 +212,6 @@ export function Membership() {
     },
   ];
 
-  const testimonials = [
-    {
-      name: "张小明",
-      role: "产品经理",
-      avatar: "👨‍💼",
-      content: "成为会员后，工作效率提升了50%。AI工具真的改变了我的工作方式！",
-      rating: 5,
-    },
-    {
-      name: "李小红",
-      role: "设计师",
-      avatar: "👩‍🎨",
-      content: "模板库太实用了，每次创作都能找到灵感。强烈推荐！",
-      rating: 5,
-    },
-    {
-      name: "王小刚",
-      role: "开发者",
-      avatar: "👨‍💻",
-      content: "从入门到现在，这里的学习路线帮我系统掌握了AI开发知识。",
-      rating: 5,
-    },
-  ];
-
   return (
     <div className="min-h-screen py-12 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -282,7 +269,41 @@ export function Membership() {
           </div>
           <p className="text-xs text-center text-muted-foreground mt-2">
             生产环境请在后端设置 PAYMENT_MODE=production 并配置商户密钥；本地开发可用「本地模拟」。
+            微信扫码支付需在拿到微信商户号、密钥并完成公网回调配置后启用；未配置前建议使用支付宝。
           </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="max-w-3xl mx-auto mb-10"
+        >
+          <Card className="rounded-3xl border-border p-6 bg-white">
+            <div className="flex items-start gap-3">
+              <LifeBuoy className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+              <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
+                <p className="font-medium text-foreground">支付自助排查</p>
+                <ol className="list-decimal pl-4 space-y-1">
+                  <li>网站环境变量中的接口地址是否为当前正在使用的 API 域名；修改后需重新部署前端。</li>
+                  <li>浏览器是否拦截弹窗（支付宝表单会先打开新窗口）。</li>
+                  <li>后端服务是否已重启；服务器安全组是否放行 443。</li>
+                  <li>微信支付需商户平台回调 URL 公网可达；未完成前请改用支付宝或本地模拟。</li>
+                </ol>
+                <p>
+                  需要协助请
+                  <Link to="/contact" className="text-primary hover:underline mx-1">
+                    联系客服
+                  </Link>
+                  、登录后提交
+                  <Link to="/support/tickets" className="text-primary hover:underline mx-1">
+                    工单
+                  </Link>
+                  或发邮件说明时间与账号。一般工作日 24h 内首次响应（高峰可能延长）；紧急支付失败请同时附上订单号截屏。
+                </p>
+              </div>
+            </div>
+          </Card>
         </motion.div>
 
         {/* Billing Toggle */}
@@ -423,37 +444,23 @@ export function Membership() {
           </div>
         </motion.div>
 
-        {/* Testimonials */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-3xl font-semibold text-foreground text-center mb-12">用户评价</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <Card
-                key={index}
-                className="rounded-3xl border-border p-6 bg-gradient-to-br from-primary/5 to-accent/5"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-2xl">
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">{testimonial.name}</h3>
-                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1 mb-3">
-                  {Array.from({ length: testimonial.rating }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-muted-foreground leading-relaxed">{testimonial.content}</p>
-              </Card>
-            ))}
-          </div>
+          <h2 className="text-3xl font-semibold text-foreground text-center mb-6">用户评价</h2>
+          <Card className="rounded-3xl border-dashed border-2 border-border p-12 text-center bg-gradient-to-br from-primary/5 to-accent/5">
+            <Star className="w-10 h-10 text-primary mx-auto mb-4 opacity-80" />
+            <p className="text-muted-foreground leading-relaxed max-w-xl mx-auto mb-4">
+              我们正在招募首批真实体验官。欢迎通过
+              <Link to="/feedback" className="text-primary hover:underline mx-1">
+                意见反馈
+              </Link>
+              留下你的学习场景与建议；入选展示的评价将经你确认后才会公开。
+            </p>
+            <p className="text-xs text-muted-foreground">当前不展示未经审核的虚构评价，以避免误导决策。</p>
+          </Card>
         </motion.div>
 
         {/* FAQ CTA */}
@@ -469,7 +476,26 @@ export function Membership() {
             <p className="text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
               我们的客服团队随时为您解答，让您放心选择最适合的方案
             </p>
-            <Button className="rounded-full bg-primary hover:bg-accent px-8">联系客服</Button>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link to="/contact">
+                <Button className="rounded-full bg-primary hover:bg-accent px-8">联系页面</Button>
+              </Link>
+              <Link to="/support/tickets">
+                <Button variant="outline" className="rounded-full border-border px-8">
+                  我的工单
+                </Button>
+              </Link>
+              <Link to="/membership/benefits">
+                <Button variant="outline" className="rounded-full border-border px-8">
+                  权益落地索引
+                </Button>
+              </Link>
+              <Link to="/legal/user-agreement">
+                <Button variant="ghost" className="rounded-full px-8">
+                  退款与发票条款
+                </Button>
+              </Link>
+            </div>
           </Card>
         </motion.div>
 

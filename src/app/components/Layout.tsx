@@ -3,6 +3,8 @@ import { Outlet, useLocation, useNavigate } from "react-router";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
 import { LoginDialogProvider, useLoginDialog } from "../context/LoginDialogContext";
+import { SkipLink } from "./SkipLink";
+import { siteConfig } from "@/lib/siteConfig";
 
 function OpenLoginFromRouteState() {
   const location = useLocation();
@@ -36,12 +38,26 @@ function OpenLoginFromRouteState() {
   return null;
 }
 
+function AnnouncementBar() {
+  const text = siteConfig.announcementBanner?.trim();
+  if (!text) {
+    return null;
+  }
+  return (
+    <div className="bg-primary text-primary-foreground text-center text-sm py-2 px-4" role="status">
+      {text}
+    </div>
+  );
+}
+
 function LayoutInner() {
   return (
     <div className="min-h-screen flex flex-col">
+      <SkipLink />
       <OpenLoginFromRouteState />
+      <AnnouncementBar />
       <Navbar />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1" tabIndex={-1}>
         <Outlet />
       </main>
       <Footer />

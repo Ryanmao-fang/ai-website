@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# 站点地图（如需可向搜索引擎提交绝对 URL 的 sitemap.xml）
+# Sitemap: https://你的域名/sitemap.xml

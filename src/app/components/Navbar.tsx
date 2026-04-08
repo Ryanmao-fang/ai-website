@@ -1,20 +1,23 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Search, Menu, X, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { useLoginDialog } from "../context/LoginDialogContext";
 import { tierDisplayName } from "@/lib/membershipTier";
+import { siteConfig } from "@/lib/siteConfig";
 
 export function Navbar() {
   const { userId, email, membershipTier, signOut } = useAuth();
   const { openLogin } = useLoginDialog();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navItems = [
     { name: "首页", path: "/" },
+    { name: "探索", path: "/explore" },
     { name: "AI名词", path: "/terms" },
     { name: "工具库", path: "/tools" },
     { name: "学习路线", path: "/learning-path" },
@@ -61,6 +64,16 @@ export function Navbar() {
       );
     }
 
+    if (item.path === "/explore") {
+      return (
+        <Link key={item.path} to="/explore">
+          <Button variant="ghost" className={btnClass}>
+            {buttonInner}
+          </Button>
+        </Link>
+      );
+    }
+
     if (!userId) {
       return (
         <Button
@@ -97,7 +110,7 @@ export function Navbar() {
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-semibold text-foreground">CommononesAI</span>
+              <span className="text-xl font-semibold text-foreground">{siteConfig.brandName}</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -111,6 +124,9 @@ export function Navbar() {
                 variant="ghost"
                 size="icon"
                 className="rounded-full text-muted-foreground hover:text-foreground"
+                type="button"
+                aria-label="全站搜索"
+                onClick={() => navigate("/search")}
               >
                 <Search className="w-5 h-5" />
               </Button>
@@ -131,7 +147,7 @@ export function Navbar() {
               ) : (
                 <Link to="/user">
                   <Button className="hidden sm:flex rounded-full bg-primary hover:bg-accent transition-colors">
-                    {tierDisplayName(membershipTier)}
+                    个人中心 · {tierDisplayName(membershipTier)}
                   </Button>
                 </Link>
               )}
@@ -179,7 +195,7 @@ export function Navbar() {
                 {userId ? (
                   <Link to="/user" onClick={() => setIsMobileMenuOpen(false)} className="block">
                     <Button className="w-full rounded-full bg-primary hover:bg-accent">
-                      会员中心
+                      个人中心
                     </Button>
                   </Link>
                 ) : (

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router";
 import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2, Lock } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -7,30 +7,55 @@ import { Button } from "../components/ui/button";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
+import { apiClient, ApiNetworkError } from "@/lib/api";
+import {
+  learningPathSections,
+  type LearningPathLevelId,
+} from "@/content/learningPathConfig";
+import { getTermById } from "@/content/termsCatalog";
+import { getToolById } from "@/content/toolsCatalog";
+import { getTemplateById } from "@/content/templatesCatalog";
+import {
+  countCompletedInLevel,
+  isPathItemCompleted,
+  togglePathItemCompleted,
+  mergeRemoteLearningRows,
+} from "@/lib/learningProgress";
 
 export function LearningPath() {
-  const { membershipTier } = useAuth();
+  const { membershipTier, accessToken } = useAuth();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState<"beginner" | "intermediate" | "advanced">(
-    "beginner"
-  );
+  const location = useLocation();
+  const [selectedLevel, setSelectedLevel] = useState<LearningPathLevelId>("beginner");
+  const [progressTick, setProgressTick] = useState(0);
 
-  const proDeepItems = [
+  useEffect(() => {
+    const hash = location.hash.replace("#", "");
+    if ("beginner" === hash || "intermediate" === hash || "advanced" === hash) {
+      setSelectedLevel(hash);
+    }
+  }, [location.hash]);
+
+  const proDeepItems: { title: string; description: string; href: string }[] = [
     {
       title: "1对1学习辅导",
-      description: "预约导师进行个性化答疑、作业批改与学习规划",
+      description: "预约导师进行个性化答疑、作业批改与学习规划（专业会员提交工单预约）。",
+      href: "/pro-booking",
     },
     {
       title: "独家深度课程",
-      description: "多模态、Agent、RAG 等企业级工程化专题串讲",
+      description: "多模态、Agent、RAG 等专题以公告与模板库更新为准。",
+      href: "/changelog",
     },
     {
       title: "企业级模板与案例",
-      description: "对齐真实业务场景的提示词、流程与交付模板",
+      description: "模板库内企业向内容与投稿审核说明。",
+      href: "/templates",
     },
     {
       title: "定制化学习方案",
-      description: "根据职业目标生成阶段性路线与资源清单",
+      description: "联系客服登记需求，或提交工单说明背景。",
+      href: "/contact",
     },
   ];
 
@@ -40,186 +65,84 @@ export function LearningPath() {
     }
   };
 
-  const paths = {
-    beginner: {
-      title: "入门篇",
-      subtitle: "从零开始，轻松入门AI",
-      icon: "🌱",
-      color: "from-emerald-500 to-teal-500",
-      items: [
-        {
-          type: "term",
-          id: 1,
-          title: "什么是人工智能",
-          description: "理解AI的基本概念",
-          completed: true,
-        },
-        {
-          type: "term",
-          id: 2,
-          title: "机器学习入门",
-          description: "AI如何学习和进步",
-          completed: true,
-        },
-        {
-          type: "tool",
-          id: 1,
-          title: "ChatGPT使用指南",
-          description: "第一个AI工具上手",
-          completed: false,
-        },
-        {
-          type: "term",
-          id: 3,
-          title: "Prompt是什么",
-          description: "学会和AI对话",
-          completed: false,
-        },
-        {
-          type: "template",
-          id: 1,
-          title: "日常对话模板",
-          description: "10个实用对话示例",
-          completed: false,
-        },
-        {
-          type: "tool",
-          id: 2,
-          title: "文心一言体验",
-          description: "体验国产AI助手",
-          completed: false,
-        },
-      ],
-    },
-    intermediate: {
-      title: "进阶篇",
-      subtitle: "深入理解，灵活应用",
-      icon: "🌿",
-      color: "from-teal-500 to-cyan-500",
-      items: [
-        {
-          type: "term",
-          id: 4,
-          title: "大语言模型原理",
-          description: "了解LLM的工作机制",
-          completed: false,
-        },
-        {
-          type: "term",
-          id: 5,
-          title: "Prompt Engineering",
-          description: "高级提示词技巧",
-          completed: false,
-        },
-        {
-          type: "tool",
-          id: 3,
-          title: "Midjourney创作",
-          description: "AI绘画工具实战",
-          completed: false,
-        },
-        {
-          type: "template",
-          id: 2,
-          title: "专业写作模板",
-          description: "营销、文案、报告",
-          completed: false,
-        },
-        {
-          type: "term",
-          id: 6,
-          title: "向量数据库",
-          description: "AI记忆的秘密",
-          completed: false,
-        },
-        {
-          type: "tool",
-          id: 4,
-          title: "Claude深度使用",
-          description: "长文本分析专家",
-          completed: false,
-        },
-      ],
-    },
-    advanced: {
-      title: "高阶篇",
-      subtitle: "融会贯通，自由创造",
-      icon: "🌳",
-      color: "from-green-500 to-emerald-600",
-      items: [
-        {
-          type: "term",
-          id: 7,
-          title: "Fine-tuning实战",
-          description: "定制你的AI模型",
-          completed: false,
-        },
-        {
-          type: "term",
-          id: 8,
-          title: "RAG技术详解",
-          description: "检索增强生成",
-          completed: false,
-        },
-        {
-          type: "tool",
-          id: 5,
-          title: "API集成开发",
-          description: "将AI集成到应用",
-          completed: false,
-        },
-        {
-          type: "template",
-          id: 3,
-          title: "企业级应用模板",
-          description: "AI解决方案设计",
-          completed: false,
-        },
-        {
-          type: "term",
-          id: 9,
-          title: "多模态AI",
-          description: "图文音视频理解",
-          completed: false,
-        },
-        {
-          type: "tool",
-          id: 6,
-          title: "Agent开发",
-          description: "构建智能代理",
-          completed: false,
-        },
-      ],
-    },
+  const currentSection =
+    learningPathSections.find((s) => s.id === selectedLevel) || learningPathSections[0];
+
+  const resolveTitle = (type: string, id: number) => {
+    if ("term" === type) {
+      return getTermById(String(id))?.name || `名词 #${id}`;
+    }
+    if ("tool" === type) {
+      return getToolById(String(id))?.name || `工具 #${id}`;
+    }
+    return getTemplateById(id)?.title || `模板 #${id}`;
   };
 
-  const currentPath = paths[selectedLevel];
-
-  const getItemIcon = (type: string) => {
-    switch (type) {
-      case "term":
-        return <BookOpen className="w-5 h-5" />;
-      case "tool":
-        return <Wrench className="w-5 h-5" />;
-      case "template":
-        return <FileText className="w-5 h-5" />;
-      default:
-        return <Sparkles className="w-5 h-5" />;
+  const resolveDescription = (type: string, id: number) => {
+    if ("term" === type) {
+      return getTermById(String(id))?.description || "";
     }
+    if ("tool" === type) {
+      return getToolById(String(id))?.description || "";
+    }
+    return getTemplateById(id)?.scenario || "";
   };
 
   const getItemLink = (type: string, id: number) => {
-    switch (type) {
-      case "term":
-        return `/terms/${id}`;
-      case "tool":
-        return `/tools/${id}`;
-      case "template":
-        return `/templates`;
-      default:
-        return "#";
+    if ("term" === type) {
+      return `/terms/${id}`;
     }
+    if ("tool" === type) {
+      return `/tools/${id}`;
+    }
+    return `/templates#t-${id}`;
   };
+
+  const getItemIcon = (type: string) => {
+    if ("term" === type) {
+      return <BookOpen className="w-5 h-5" />;
+    }
+    if ("tool" === type) {
+      return <Wrench className="w-5 h-5" />;
+    }
+    if ("template" === type) {
+      return <FileText className="w-5 h-5" />;
+    }
+    return <Sparkles className="w-5 h-5" />;
+  };
+
+  const completedCount = countCompletedInLevel(selectedLevel, currentSection.items);
+  const total = currentSection.items.length;
+  const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+  const bumpProgress = () => setProgressTick((n) => n + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!accessToken) {
+        return;
+      }
+      try {
+        const res = await apiClient.getLearningProgress(accessToken);
+        const items = (res?.items || []) as {
+          level: string;
+          item_type: string;
+          item_id: number;
+          completed: boolean;
+        }[];
+        if (!cancelled) {
+          mergeRemoteLearningRows(items);
+          setProgressTick((n) => n + 1);
+        }
+      } catch {
+        /* 表未创建或离线时沿用本机进度 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
 
   return (
     <>
@@ -229,206 +152,246 @@ export function LearningPath() {
         variant="upgrade"
         onRequestLogin={() => setUpgradeOpen(false)}
       />
-    <div className="min-h-screen py-12 bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-semibold text-foreground mb-4">学习路线</h1>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            循序渐进，系统掌握AI知识和技能
-          </p>
-        </motion.div>
-
-        {/* Level Selector */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
-        >
-          {(["beginner", "intermediate", "advanced"] as const).map((level, index) => {
-            const path = paths[level];
-            const isSelected = selectedLevel === level;
-            return (
-              <motion.div
-                key={level}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 + index * 0.1 }}
-              >
-                <Card
-                  onClick={() => setSelectedLevel(level)}
-                  className={`rounded-3xl p-8 cursor-pointer transition-all ${
-                    isSelected
-                      ? "border-primary shadow-lg scale-105"
-                      : "border-border hover:shadow-md hover:scale-102"
-                  }`}
-                >
-                  <div className="text-center">
-                    <div className="text-5xl mb-4">{path.icon}</div>
-                    <h3 className="text-xl font-semibold text-foreground mb-2">{path.title}</h3>
-                    <p className="text-muted-foreground mb-4">{path.subtitle}</p>
-                    {isSelected && (
-                      <Badge className="rounded-full bg-primary text-white border-0">
-                        当前选择
-                      </Badge>
-                    )}
-                  </div>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
-        {/* Current Path Content */}
-        <motion.div
-          key={selectedLevel}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <Card className={`rounded-3xl border-border p-8 bg-gradient-to-br ${currentPath.color} bg-opacity-5 mb-8`}>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="text-4xl">{currentPath.icon}</div>
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground">{currentPath.title}</h2>
-                <p className="text-muted-foreground">{currentPath.subtitle}</p>
-              </div>
-            </div>
-          </Card>
-
-          <div className="space-y-4">
-            {currentPath.items.map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Link to={getItemLink(item.type, item.id)}>
-                  <Card
-                    className={`rounded-3xl border-border p-6 hover:shadow-lg transition-all group ${
-                      item.completed ? "bg-primary/5" : "bg-white"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex-shrink-0">
-                        <div
-                          className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                            item.completed
-                              ? "bg-primary text-white"
-                              : "bg-muted text-muted-foreground"
-                          } group-hover:scale-110 transition-transform`}
-                        >
-                          {item.completed ? (
-                            <CheckCircle2 className="w-6 h-6" />
-                          ) : (
-                            getItemIcon(item.type)
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3
-                            className={`font-semibold ${
-                              item.completed
-                                ? "text-primary"
-                                : "text-foreground group-hover:text-primary"
-                            } transition-colors`}
-                          >
-                            {item.title}
-                          </h3>
-                          <Badge
-                            variant="secondary"
-                            className="rounded-full bg-muted/50 text-muted-foreground border-0 text-xs"
-                          >
-                            {item.type === "term" && "名词"}
-                            {item.type === "tool" && "工具"}
-                            {item.type === "template" && "模板"}
-                          </Badge>
-                        </div>
-                        <p className="text-muted-foreground">{item.description}</p>
-                      </div>
-                      {item.completed && (
-                        <Badge className="rounded-full bg-primary/10 text-primary border-0">
-                          已完成
-                        </Badge>
-                      )}
-                    </div>
-                  </Card>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Progress */}
-          <Card className="rounded-3xl border-border p-8 mt-8 bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">学习进度</h3>
-              <span className="text-muted-foreground">
-                {currentPath.items.filter((item) => item.completed).length} /{" "}
-                {currentPath.items.length}
-              </span>
-            </div>
-            <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
-                style={{
-                  width: `${
-                    (currentPath.items.filter((item) => item.completed).length /
-                      currentPath.items.length) *
-                    100
-                  }%`,
-                }}
-              />
-            </div>
-          </Card>
-
-          <Card className="rounded-3xl border-border p-8 mt-10 bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <Lock className="w-5 h-5 text-amber-600" />
-              <h3 className="text-xl font-semibold text-foreground">专业会员 · 深度与定制</h3>
-              {"pro" === membershipTier ? (
-                <Badge className="rounded-full bg-amber-500/20 text-amber-900 border-0">已解锁</Badge>
-              ) : (
-                <Badge variant="secondary" className="rounded-full border-0">
-                  升级后可用
-                </Badge>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              对应专业会员权益：1对1 学习辅导、独家深度课程、企业级模板库、优先体验新功能、专属社群交流、线下活动优先与定制化学习方案。
+      <div className="min-h-screen py-12 bg-background">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-4xl font-semibold text-foreground mb-4">学习路线</h1>
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              循序渐进，系统掌握 AI 知识；登录后勾选可与账号云端同步（需部署学习进度表），未登录或离线时仍使用本机缓存。
             </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {proDeepItems.map((item) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  className="text-left rounded-3xl border border-border bg-white/80 p-5 hover:shadow-md transition-all"
-                  onClick={handleProItemClick}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+          >
+            {learningPathSections.map((section, index) => {
+              const isSelected = selectedLevel === section.id;
+              return (
+                <motion.div
+                  key={section.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 + index * 0.1 }}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
-                    {"pro" !== membershipTier ? (
-                      <Lock className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
-                    ) : null}
-                  </div>
-                </button>
-              ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLevel(section.id);
+                      window.history.replaceState(null, "", `#${section.id}`);
+                    }}
+                    className="w-full text-left"
+                  >
+                    <Card
+                      className={`rounded-3xl p-8 cursor-pointer transition-all ${
+                        isSelected ? "border-primary shadow-lg scale-105" : "border-border hover:shadow-md"
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-5xl mb-4">{section.icon}</div>
+                        <h3 className="text-xl font-semibold text-foreground mb-2">{section.title}</h3>
+                        <p className="text-muted-foreground mb-4">{section.subtitle}</p>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {section.items.length} 个学习内容
+                        </p>
+                        {isSelected ? (
+                          <Badge className="rounded-full bg-primary text-white border-0">当前选择</Badge>
+                        ) : null}
+                      </div>
+                    </Card>
+                  </button>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+
+          <motion.div
+            key={`${selectedLevel}-${progressTick}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Card
+              className={`rounded-3xl border-border p-8 bg-gradient-to-br ${currentSection.color} bg-opacity-5 mb-8`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="text-4xl">{currentSection.icon}</div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground">{currentSection.title}</h2>
+                  <p className="text-muted-foreground">{currentSection.subtitle}</p>
+                </div>
+              </div>
+            </Card>
+
+            <div className="space-y-4">
+              {currentSection.items.map((item, index) => {
+                const title = resolveTitle(item.type, item.id);
+                const desc = resolveDescription(item.type, item.id);
+                const completed = isPathItemCompleted(selectedLevel, item.type, item.id);
+                return (
+                  <motion.div
+                    key={`${item.type}-${item.id}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card
+                      className={`rounded-3xl border-border p-6 transition-all ${
+                        completed ? "bg-primary/5" : "bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Link to={getItemLink(item.type, item.id)} className="flex-1 min-w-0 group">
+                          <div className="flex items-center gap-4">
+                            <div className="flex-shrink-0">
+                              <div
+                                className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                                  completed
+                                    ? "bg-primary text-white"
+                                    : "bg-muted text-muted-foreground"
+                                } group-hover:scale-110 transition-transform`}
+                              >
+                                {completed ? <CheckCircle2 className="w-6 h-6" /> : getItemIcon(item.type)}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3
+                                  className={`font-semibold ${
+                                    completed
+                                      ? "text-primary"
+                                      : "text-foreground group-hover:text-primary"
+                                  } transition-colors`}
+                                >
+                                  {title}
+                                </h3>
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full bg-muted/50 text-muted-foreground border-0 text-xs"
+                                >
+                                  {item.type === "term" && "名词"}
+                                  {item.type === "tool" && "工具"}
+                                  {item.type === "template" && "模板"}
+                                </Badge>
+                              </div>
+                              <p className="text-muted-foreground text-sm line-clamp-2">{desc}</p>
+                            </div>
+                            {completed ? (
+                              <Badge className="rounded-full bg-primary/10 text-primary border-0 shrink-0">
+                                已完成
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </Link>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full shrink-0 border-border"
+                          onClick={() => {
+                            const next = !completed;
+                            togglePathItemCompleted(selectedLevel, item.type, item.id, next);
+                            bumpProgress();
+                            if (accessToken) {
+                              void (async () => {
+                                try {
+                                  await apiClient.saveLearningProgress(accessToken, {
+                                    level: selectedLevel,
+                                    itemType: item.type,
+                                    itemId: item.id,
+                                    completed: next,
+                                  });
+                                } catch (e) {
+                                  if (e instanceof ApiNetworkError) {
+                                    alert(e.message);
+                                  }
+                                }
+                              })();
+                            }
+                          }}
+                        >
+                          {completed ? "取消完成" : "标记完成"}
+                        </Button>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
-          </Card>
-        </motion.div>
+
+            <Card className="rounded-3xl border-border p-8 mt-8 bg-white">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-foreground">学习进度</h3>
+                <span className="text-muted-foreground">
+                  {completedCount} / {total}
+                </span>
+              </div>
+              <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </Card>
+
+            <Card className="rounded-3xl border-border p-8 mt-10 bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Lock className="w-5 h-5 text-amber-600" />
+                <h3 className="text-xl font-semibold text-foreground">专业会员 · 深度与定制</h3>
+                {"pro" === membershipTier ? (
+                  <Badge className="rounded-full bg-amber-500/20 text-amber-900 border-0">已解锁</Badge>
+                ) : (
+                  <Badge variant="secondary" className="rounded-full border-0">
+                    升级后可用
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                对应专业会员权益说明见会员页；具体履约（预约、开票、交付）以客服确认为准。
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {proDeepItems.map((item) =>
+                  "pro" === membershipTier ? (
+                    <Link
+                      key={item.title}
+                      to={item.href}
+                      className="text-left rounded-3xl border border-border bg-white/80 p-5 hover:shadow-md transition-all block"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <button
+                      key={item.title}
+                      type="button"
+                      className="text-left rounded-3xl border border-border bg-white/80 p-5 hover:shadow-md transition-all w-full"
+                      onClick={handleProItemClick}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                        </div>
+                        <Lock className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                      </div>
+                    </button>
+                  )
+                )}
+              </div>
+            </Card>
+          </motion.div>
+        </div>
       </div>
-    </div>
     </>
   );
 }
