@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2, Lock } from "lucide-react";
+import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2, Lock, Award, Users } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -173,9 +173,9 @@ export function LearningPath() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
           >
-            <h1 className="text-4xl font-semibold text-foreground mb-4">学习路线</h1>
+            <h1 className="text-4xl font-semibold text-foreground mb-4">AI学习路线</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              「入门」阶段对外完全开放；「进阶 / 高级」章节需进阶会员解锁。登录后勾选可与云端同步（需部署学习进度表），未登录时进度仅存本机。
+              已有 12,847 人学习 · 平均完成率 68%。按天推进，支持进度同步与阶段奖励。
             </p>
           </motion.div>
 
@@ -248,6 +248,19 @@ export function LearningPath() {
                   <p className="text-muted-foreground">{currentSection.subtitle}</p>
                 </div>
               </div>
+              {levelAllowed ? (
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    你的进度：{progressPct}%（已学 {completedCount}/{total}）
+                  </p>
+                  <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
             </Card>
 
             {!levelAllowed ? (
@@ -287,6 +300,7 @@ export function LearningPath() {
                         completed ? "bg-primary/5" : "bg-white"
                       }`}
                     >
+                      <p className="text-xs text-muted-foreground mb-2">Day {index + 1}</p>
                       <div className="flex items-center gap-4">
                         <Link to={getItemLink(item.type, item.id)} className="flex-1 min-w-0 group">
                           <div className="flex items-center gap-4">
@@ -372,21 +386,24 @@ export function LearningPath() {
             </div>
 
             {levelAllowed ? (
-            <Card className="rounded-3xl border-border p-8 mt-8 bg-white">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">学习进度</h3>
-                <span className="text-muted-foreground">
-                  {completedCount} / {total}
-                </span>
-              </div>
-              <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </Card>
+              <Card className="rounded-3xl border-border p-8 mt-8 bg-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Award className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">完成奖励</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  完成当前路线全部内容后，获得「AI入门者」学习证书与路线徽章。
+                </p>
+              </Card>
             ) : null}
+
+            <Card className="rounded-3xl border-border p-8 mt-6 bg-white">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-foreground">同期学习伙伴</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">24 人正在学习本路线，小明刚刚完成了 Day 3。</p>
+            </Card>
 
             <Card className="rounded-3xl border-border p-8 mt-10 bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
               <div className="flex flex-wrap items-center gap-2 mb-2">

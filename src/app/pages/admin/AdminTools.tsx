@@ -69,6 +69,45 @@ export function AdminTools() {
     }
   };
 
+  const openEditorById = async (id: number) => {
+    if (!token) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const payload = await adminApi.getTool(token, String(id));
+      const item = (payload as any)?.item;
+      if (!item) {
+        throw new Error("未获取到详情数据");
+      }
+      setEditing({
+        id: item.id,
+        slug: item.slug || "",
+        name: item.name || "",
+        description: item.description || "",
+        icon: item.icon || "",
+        category: item.category || "",
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        rating: Number(item.rating || 0),
+        link: item.link || "",
+        platform: item.platform || "",
+        openSource: Boolean(item.open_source),
+        priceTier: item.price_tier || "freemium",
+        suitableFor: item.suitable_for || "",
+        disclaimer: item.disclaimer || "",
+        contentMarkdown: item.content_markdown || "",
+        contentJson: item.content_json || {},
+        status: item.status || "draft",
+        contentVersion: item.content_version || "",
+      });
+    } catch (e) {
+      setError((e as Error)?.message || "加载详情失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl border-border p-5 bg-white">
@@ -186,7 +225,7 @@ export function AdminTools() {
               key={t.id}
               type="button"
               className="w-full text-left rounded-2xl border border-border p-4 hover:bg-muted/30"
-              onClick={() => setEditing({ ...t, tags: [], contentMarkdown: "", contentJson: {}, contentVersion: "" })}
+              onClick={() => void openEditorById(t.id)}
             >
               <div className="flex items-center justify-between gap-3">
                 <div>

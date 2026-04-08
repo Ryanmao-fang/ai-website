@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, Navigate } from "react-router";
-import { ArrowLeft, Heart, Share2, BookOpen, Sparkles, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Heart, Share2, BookOpen, Sparkles, Clock, ThumbsUp, ThumbsDown, MessageCircle, CircleHelp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -100,32 +100,32 @@ export function TermDetail() {
   }, [term]);
 
   const refreshFavorite = useCallback(async () => {
-    if (!accessToken || !term || !tierMeetsMin(membershipTier, "standard")) {
+    if (!accessToken || !effectiveTerm || effectiveTerm.id <= 0 || !tierMeetsMin(membershipTier, "standard")) {
       setIsFavorite(false);
       return;
     }
     try {
       const payload = await apiClient.getFavorites(accessToken);
       const rows = (payload?.items || []) as { target_type: string; target_id: string }[];
-      const hit = rows.some((r) => "term" === r.target_type && r.target_id === String(term.id));
+      const hit = rows.some((r) => "term" === r.target_type && r.target_id === String(effectiveTerm.id));
       setIsFavorite(hit);
     } catch {
       setIsFavorite(false);
     }
-  }, [accessToken, membershipTier, term]);
+  }, [accessToken, membershipTier, effectiveTerm]);
 
   useEffect(() => {
     void refreshFavorite();
   }, [refreshFavorite]);
 
   useEffect(() => {
-    if (!term) {
+    if (!effectiveTerm || effectiveTerm.id <= 0) {
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const s = await apiClient.getContentFeedbackStats("term", String(term.id));
+        const s = await apiClient.getContentFeedbackStats("term", String(effectiveTerm.id));
         if (!cancelled) {
           setHelpfulStats({ yes: Number(s.yes) || 0, no: Number(s.no) || 0 });
         }
@@ -138,10 +138,10 @@ export function TermDetail() {
     return () => {
       cancelled = true;
     };
-  }, [term]);
+  }, [effectiveTerm]);
 
   const handleFavoriteClick = async () => {
-    if (!term) {
+    if (!effectiveTerm || effectiveTerm.id <= 0) {
       return;
     }
     if (!accessToken) {
@@ -153,7 +153,7 @@ export function TermDetail() {
       return;
     }
     try {
-      await apiClient.toggleFavorite(accessToken, { targetType: "term", targetId: String(term.id) });
+      await apiClient.toggleFavorite(accessToken, { targetType: "term", targetId: String(effectiveTerm.id) });
       await refreshFavorite();
     } catch (e) {
       alert((e as Error).message || "操作失败");
@@ -171,27 +171,37 @@ export function TermDetail() {
     setTimeout(() => setShareHint(""), 2400);
   };
 
-  if (!term) {
-    return <Navigate to="/not-found" replace />;
-  }
-
-  const relatedTerms = term.relatedTermIds
+  const relatedTerms = effectiveTerm.relatedTermIds
     .map((rid) => termsCatalog.find((t) => t.id === rid))
     .filter(Boolean) as typeof termsCatalog;
+  const practicalActions = [
+    { name: "写周报", href: "/templates", label: "查看模板" },
+    { name: "写代码", href: "/tools/compare", label: "查看工具" },
+    { name: "学外语", href: "/templates", label: "查看模板" },
+  ];
+  const relatedToolLinks = [
+    { name: "ChatGPT", href: "/tool/chatgpt" },
+    { name: "Claude", href: "/tool/claude" },
+    { name: "Gemini", href: "/tool/gemini" },
+  ];
 
   const postHelpful = async (helpful: boolean) => {
     if (!accessToken) {
       setFeedbackHint("请先登录再提交评价。");
       return;
     }
+    if (effectiveTerm.id <= 0) {
+      setFeedbackHint("该内容暂不支持评价，请先发布到正式词条库。");
+      return;
+    }
     setFeedbackHint("");
     try {
       await apiClient.postContentHelpful(accessToken, {
         targetType: "term",
-        targetId: String(term.id),
+        targetId: String(effectiveTerm.id),
         helpful,
       });
-      const s = await apiClient.getContentFeedbackStats("term", String(term.id));
+      const s = await apiClient.getContentFeedbackStats("term", String(effectiveTerm.id));
       setHelpfulStats({ yes: Number(s.yes) || 0, no: Number(s.no) || 0 });
       setFeedbackHint("感谢反馈，已记录。");
     } catch (e) {
@@ -236,9 +246,12 @@ export function TermDetail() {
                 </Badge>
                 <h1 className="text-4xl font-semibold text-foreground mb-4">{effectiveTerm.name}</h1>
                 <p className="text-lg text-muted-foreground">{effectiveTerm.description}</p>
-                <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  预计阅读约 {effectiveTerm.readingMinutes} 分钟
+                <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2 flex-wrap">
+                  <span>⭐ 4.8 分</span>
+                  <span>·</span>
+                  <span>12,847 人学习</span>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1"><Clock className="w-4 h-4" />预计 {effectiveTerm.readingMinutes} 分钟</span>
                 </p>
                 {effectiveTerm.aliases.length > 0 ? (
                   <p className="text-sm text-muted-foreground mt-2">
@@ -289,16 +302,35 @@ export function TermDetail() {
             <Card className="rounded-3xl border-border p-8 mb-8 bg-gradient-to-br from-primary/5 to-accent/5">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">简单解释</h2>
+                <h2 className="text-xl font-semibold text-foreground">一句话理解（免费）</h2>
               </div>
               <p className="text-foreground leading-relaxed text-lg">{effectiveTerm.simpleExplanation}</p>
             </Card>
           </motion.div>
 
+          <Card className="rounded-3xl border-border p-6 mb-8 bg-white">
+            <h2 className="text-xl font-semibold text-foreground mb-4">我能用它做什么？（免费）</h2>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {practicalActions.map((item) => (
+                <div key={item.name} className="rounded-2xl border border-border p-4">
+                  <p className="text-sm font-medium text-foreground">{item.name}</p>
+                  <Link to={item.href} className="text-xs text-primary hover:underline mt-2 inline-block">
+                    {item.label}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </Card>
+
           {cmsMarkdown ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }} className="mb-8">
               <Card className="rounded-3xl border-border p-8 bg-white">
-                <h2 className="text-xl font-semibold text-foreground mb-4">正文</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-4">深度解释（分层）</h2>
+                <div className="mb-4 flex flex-wrap gap-2 text-xs">
+                  <Badge className="rounded-full border-0 bg-emerald-100 text-emerald-700">小白版：免费</Badge>
+                  <Badge className="rounded-full border-0 bg-blue-100 text-blue-700">进阶版：登录解锁</Badge>
+                  <Badge className="rounded-full border-0 bg-amber-100 text-amber-700">专业版：会员解锁</Badge>
+                </div>
                 {renderMarkdownBasic(cmsPreview || cmsMarkdown)}
                 {!showFullContent && cmsRest ? (
                   <div className="mt-6">
@@ -391,7 +423,7 @@ export function TermDetail() {
             transition={{ delay: 0.22 }}
             className="mb-8"
           >
-            <h2 className="text-2xl font-semibold text-foreground mb-6">举例说明</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-6">实战案例（会员优先）</h2>
             {showFullContent ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {term.examples.map((example, index) => (
@@ -467,6 +499,17 @@ export function TermDetail() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
           >
+            <Card className="rounded-3xl border-border p-6 mb-6 bg-white">
+              <h2 className="text-xl font-semibold text-foreground mb-3">相关工具</h2>
+              <div className="flex flex-wrap gap-3">
+                {relatedToolLinks.map((tool) => (
+                  <Link key={tool.name} to={tool.href} className="text-sm text-primary hover:underline">
+                    {tool.name}
+                  </Link>
+                ))}
+              </div>
+            </Card>
+
             <h2 className="text-2xl font-semibold text-foreground mb-6">延伸阅读</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {relatedTerms.map((relatedTerm) => (
@@ -483,6 +526,26 @@ export function TermDetail() {
               ))}
             </div>
           </motion.div>
+
+          <Card className="rounded-3xl border-border p-6 mt-8 bg-white">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold text-foreground">学员讨论（示例）</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">“终于搞懂 LLM 和 GPT 的区别了，原来核心是能力边界和应用方式。”</p>
+          </Card>
+
+          <Card className="rounded-3xl border-border p-6 mt-6 bg-white mb-10">
+            <div className="flex items-center gap-2 mb-3">
+              <CircleHelp className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold text-foreground">学习检测（3题）</h2>
+            </div>
+            <ul className="space-y-2 text-sm text-muted-foreground list-disc pl-5">
+              <li>LLM 与传统搜索引擎在输出方式上最大的差异是什么？</li>
+              <li>你会把这个名词用于哪类工作流？请给出一个场景。</li>
+              <li>学习后你还想继续关联哪个名词？</li>
+            </ul>
+          </Card>
         </div>
       </div>
     </>

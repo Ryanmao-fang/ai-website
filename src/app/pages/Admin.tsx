@@ -14,9 +14,12 @@ function AdminGateInner() {
   const { openLogin } = useLoginDialog();
   const { token, expiresAt, loading, login, logout, setToken } = useAdmin();
   const [adminMe, setAdminMe] = useState<{ username: string; adminNote: string } | null>(null);
-  const [username, setUsername] = useState("Ryan");
-  const [password, setPassword] = useState("Mao20010917");
+  const [overview, setOverview] = useState<{ terms: number; tools: number; users: number; orders: number } | null>(null);
+  const [healthErr, setHealthErr] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [lastSyncAt, setLastSyncAt] = useState<number>(0);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -52,6 +55,47 @@ function AdminGateInner() {
       } catch (e) {
         if (!cancelled) {
           setAdminMe(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!token) {
+        setOverview(null);
+        setHealthErr("");
+        return;
+      }
+      try {
+        const [termsRes, toolsRes, usersRes, ordersRes] = await Promise.all([
+          adminApi.listTerms(token),
+          adminApi.listTools(token),
+          adminApi.listUsers(token, { page: 1, perPage: 1 }),
+          adminApi.listOrders(token, { limit: 1 }),
+        ]);
+        if (!cancelled) {
+          const termsCount = Array.isArray((termsRes as any)?.items) ? (termsRes as any).items.length : 0;
+          const toolsCount = Array.isArray((toolsRes as any)?.items) ? (toolsRes as any).items.length : 0;
+          const usersCount = Array.isArray((usersRes as any)?.items) ? (usersRes as any).items.length : 0;
+          const ordersCount = Array.isArray((ordersRes as any)?.items) ? (ordersRes as any).items.length : 0;
+          setOverview({
+            terms: termsCount,
+            tools: toolsCount,
+            users: usersCount,
+            orders: ordersCount,
+          });
+          setLastSyncAt(Date.now());
+          setHealthErr("");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setOverview(null);
+          setHealthErr((e as Error)?.message || "管理接口连接失败");
         }
       }
     })();
@@ -108,7 +152,7 @@ function AdminGateInner() {
               {err ? <p className="text-sm text-destructive">{err}</p> : null}
               <Button
                 className="rounded-full bg-primary hover:bg-accent w-full"
-                disabled={loading}
+                disabled={loading || !username.trim() || !password.trim()}
                 onClick={async () => {
                   setErr("");
                   try {
@@ -146,38 +190,79 @@ function AdminGateInner() {
   ];
 
   return (
-    <div className="min-h-screen bg-secondary/30">
-      <div className="border-b border-border bg-white">
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border bg-white/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">管理台</h1>
+            <h1 className="text-lg font-semibold text-foreground">运营管理控制台</h1>
             <p className="text-xs text-muted-foreground">
-              {adminMe?.username ? `管理员：${adminMe.username}` : "已登录"} {adminMe?.adminNote ? `· ${adminMe.adminNote}` : ""}
+              {adminMe?.username ? `管理员：${adminMe.username}` : "已登录"}
+              {adminMe?.adminNote ? ` · ${adminMe.adminNote}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/" className="text-sm text-muted-foreground hover:underline">
-              返回前台
+            <Link to="/" className="text-sm text-muted-foreground hover:text-primary">
+              返回主站
             </Link>
             <Button variant="outline" className="rounded-full" onClick={() => logout()}>
-              退出管理台
+              退出
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-wrap gap-2 mb-6">
-          {navItems.map((n) => (
-            <Link key={n.to} to={n.to}>
-              <Button variant="outline" size="sm" className="rounded-full">
-                {n.label}
-              </Button>
-            </Link>
-          ))}
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+        <Card className="rounded-3xl border-border p-4 bg-white h-fit lg:sticky lg:top-6">
+          <p className="text-xs text-muted-foreground mb-3">运营导航</p>
+          <div className="space-y-2">
+            {navItems.map((n) => (
+              <Link key={n.to} to={n.to}>
+                <Button
+                  variant={location.pathname === n.to ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full w-full justify-start"
+                >
+                  {n.label}
+                </Button>
+              </Link>
+            ))}
+          </div>
+        </Card>
 
-        <Outlet />
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="rounded-3xl border-border p-4 bg-white">
+              <p className="text-xs text-muted-foreground">已收录名词</p>
+              <p className="text-2xl font-semibold text-foreground mt-1">{overview ? overview.terms : "-"}</p>
+            </Card>
+            <Card className="rounded-3xl border-border p-4 bg-white">
+              <p className="text-xs text-muted-foreground">已收录工具</p>
+              <p className="text-2xl font-semibold text-foreground mt-1">{overview ? overview.tools : "-"}</p>
+            </Card>
+            <Card className="rounded-3xl border-border p-4 bg-white">
+              <p className="text-xs text-muted-foreground">本页用户样本</p>
+              <p className="text-2xl font-semibold text-foreground mt-1">{overview ? overview.users : "-"}</p>
+            </Card>
+            <Card className="rounded-3xl border-border p-4 bg-white">
+              <p className="text-xs text-muted-foreground">订单样本</p>
+              <p className="text-2xl font-semibold text-foreground mt-1">{overview ? overview.orders : "-"}</p>
+            </Card>
+          </div>
+
+          <Card className="rounded-3xl border-border p-4 bg-white">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <Badge className="rounded-full border-0 bg-emerald-100 text-emerald-700">
+                {healthErr ? "接口异常" : "接口正常"}
+              </Badge>
+              <span className="text-muted-foreground">
+                最近同步：{lastSyncAt ? new Date(lastSyncAt).toLocaleString() : "尚未同步"}
+              </span>
+            </div>
+            {healthErr ? <p className="text-xs text-destructive mt-2">{healthErr}</p> : null}
+          </Card>
+
+          <Outlet />
+        </div>
       </div>
     </div>
   );

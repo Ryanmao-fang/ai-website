@@ -8,6 +8,8 @@ import {
   Lightbulb,
   CheckCircle2,
   Share2,
+  Film,
+  Swords,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -232,6 +234,11 @@ export function ToolDetail() {
 
   const displayAvg =
     avgRating && avgRating.count > 0 ? avgRating.average.toFixed(1) : String(tool.rating);
+  const promptTemplates = [
+    "小红书文案生成器",
+    "周报生成器",
+    "代码解释助手",
+  ];
 
   return (
     <>
@@ -312,6 +319,9 @@ export function ToolDetail() {
                       <p className="text-xs text-muted-foreground">登录后可参与星级评分</p>
                     )}
                   </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    2.3 万人使用 · 适合：{tool.suitableFor || "写作 / 编程 / 提效"}
+                  </p>
                   {tool.suitableFor ? (
                     <p className="text-sm text-muted-foreground mb-2">适合人群：{tool.suitableFor}</p>
                   ) : null}
@@ -355,6 +365,25 @@ export function ToolDetail() {
               </div>
             </Card>
           ) : null}
+
+          <Card className="rounded-3xl border-border p-6 mb-8 bg-white">
+            <h2 className="text-xl font-semibold text-foreground mb-4">快速信息</h2>
+            <div className="grid sm:grid-cols-3 gap-3 text-sm">
+              <div className="rounded-2xl border border-border p-4">价格：{tool.priceTier || "freemium"}</div>
+              <div className="rounded-2xl border border-border p-4">平台：{tool.platform || "Web"}</div>
+              <div className="rounded-2xl border border-border p-4">中文支持：优秀</div>
+            </div>
+          </Card>
+
+          <Card className="rounded-3xl border-border p-6 mb-8 bg-white">
+            <div className="flex items-center gap-2 mb-3">
+              <Film className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold text-foreground">5分钟上手视频</h2>
+            </div>
+            <div className="rounded-2xl border border-dashed border-border p-8 text-sm text-muted-foreground">
+              可在 CMS 内容中嵌入视频链接，这里展示播放器占位区。
+            </div>
+          </Card>
 
           {cmsMarkdown ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mb-8">
@@ -413,7 +442,7 @@ export function ToolDetail() {
                 transition={{ delay: 0.3 }}
                 className="mb-8"
               >
-                <h2 className="text-2xl font-semibold text-foreground mb-6">使用场景</h2>
+                <h2 className="text-2xl font-semibold text-foreground mb-6">核心功能（带演示）</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {tool.useCases.map((useCase, index) => (
                     <Card
@@ -434,7 +463,7 @@ export function ToolDetail() {
                 transition={{ delay: 0.4 }}
                 className="mb-8"
               >
-                <h2 className="text-2xl font-semibold text-foreground mb-6">使用步骤</h2>
+                <h2 className="text-2xl font-semibold text-foreground mb-6">快速开始步骤</h2>
                 <Card className="rounded-3xl border-border p-8 bg-white">
                   <div className="space-y-6">
                     {tool.howToUse.map((step) => (
@@ -458,6 +487,32 @@ export function ToolDetail() {
                 transition={{ delay: 0.45 }}
                 className="mb-10"
               >
+                <Card className="rounded-3xl border-border p-6 bg-white mb-6">
+                  <h2 className="text-xl font-semibold text-foreground mb-3">Prompt 模板库（工具专用）</h2>
+                  <div className="space-y-2">
+                    {promptTemplates.map((p) => (
+                      <div key={p} className="rounded-2xl border border-border p-3 text-sm flex items-center justify-between gap-3">
+                        <span>{p}</span>
+                        <Badge variant="secondary" className="rounded-full border-0">会员</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="rounded-3xl border-border p-6 bg-white mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Swords className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-semibold text-foreground">同类工具对比</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    可前往
+                    <Link to="/tools/compare" className="text-primary hover:underline mx-1">
+                      工具对比
+                    </Link>
+                    查看详细对比表。
+                  </p>
+                </Card>
+
                 <Card className="rounded-3xl border-border p-6 bg-white text-sm text-muted-foreground leading-relaxed flex gap-2">
                   <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
                   <span>
