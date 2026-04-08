@@ -153,7 +153,7 @@ export function AdminLearningPaths() {
                 difficulty: "beginner",
                 minTier: "free",
                 contentJson: {},
-                status: "draft",
+                status: "published",
                 contentVersion: "",
               })
             }

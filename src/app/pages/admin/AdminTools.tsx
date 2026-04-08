@@ -26,6 +26,7 @@ export function AdminTools() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const filtered = useMemo(() => items, [items]);
 
@@ -130,6 +131,73 @@ export function AdminTools() {
     }
   };
 
+  const buildMarkdownFromStatic = (item: any) => {
+    const lines: string[] = [];
+    lines.push(`# ${item.name}`);
+    lines.push("");
+    lines.push("## 工具介绍");
+    lines.push(item.fullDescription || item.description || "");
+    lines.push("");
+    lines.push("## 使用场景");
+    for (const ex of item.useCases || []) {
+      lines.push(`### ${ex.title}`);
+      lines.push(ex.description || "");
+      lines.push("");
+    }
+    return lines.join("\n");
+  };
+
+  const importStaticTools = async () => {
+    if (!token) {
+      return;
+    }
+    setImporting(true);
+    setError("");
+    try {
+      const payload = await adminApi.listTools(token);
+      const existing = ((payload as any)?.items || []) as ToolRow[];
+      const slugSet = new Set(existing.map((x) => String(x.slug || "").trim().toLowerCase()));
+      let created = 0;
+      for (const t of toolsCatalog) {
+        const slug = String(t.slug || "").trim().toLowerCase();
+        if (!slug || slugSet.has(slug)) {
+          continue;
+        }
+        await adminApi.createTool(token, {
+          slug: t.slug,
+          name: t.name,
+          description: t.description,
+          icon: t.icon || "",
+          category: t.category,
+          tags: t.tags || [],
+          rating: t.rating || 0,
+          link: t.link || "",
+          platform: t.platform || "",
+          openSource: Boolean(t.openSource),
+          priceTier: t.priceTier || "freemium",
+          suitableFor: t.suitableFor || "",
+          disclaimer: t.disclaimer || "",
+          contentMarkdown: buildMarkdownFromStatic(t),
+          contentJson: {
+            fullDescription: t.fullDescription || "",
+            useCases: t.useCases || [],
+            howToUse: t.howToUse || [],
+          },
+          status: "published",
+          contentVersion: "static-migrated",
+        });
+        slugSet.add(slug);
+        created += 1;
+      }
+      await reload();
+      alert(`静态工具库迁移完成：新增 ${created} 条，重复已跳过。`);
+    } catch (e) {
+      setError((e as Error)?.message || "迁移失败");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl border-border p-5 bg-white">
@@ -148,6 +216,9 @@ export function AdminTools() {
           </select>
           <Button className="rounded-full" onClick={() => void reload()} disabled={loading}>
             刷新
+          </Button>
+          <Button variant="outline" className="rounded-full" onClick={() => void importStaticTools()} disabled={importing || loading}>
+            {importing ? "迁移中…" : "一键迁移静态工具库"}
           </Button>
           <Button
             className="rounded-full bg-primary hover:bg-accent"
@@ -168,7 +239,7 @@ export function AdminTools() {
                 disclaimer: "",
                 contentMarkdown: "",
                 contentJson: {},
-                status: "draft",
+                status: "published",
                 contentVersion: "",
               })
             }

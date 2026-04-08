@@ -190,7 +190,7 @@ export function TermsList() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTerms.map((term, index) => (
               <motion.div
-                key={term.id}
+                key={term.slug}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
@@ -207,7 +207,8 @@ export function TermsList() {
                       type="button"
                       className="text-muted-foreground hover:text-destructive transition-colors"
                       aria-label="收藏"
-                      onClick={() => toggleFavorite(term.id)}
+                      onClick={() => toggleFavorite(Number(term.id || 0))}
+                      disabled={Number(term.id || 0) <= 0 || Number(term.id || 0) >= 100000}
                     >
                       <Heart
                         className={`w-5 h-5 ${

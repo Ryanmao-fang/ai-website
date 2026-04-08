@@ -26,6 +26,7 @@ export function AdminTerms() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const filtered = useMemo(() => items, [items]);
 
@@ -123,6 +124,67 @@ export function AdminTerms() {
     }
   };
 
+  const buildMarkdownFromStatic = (item: any) => {
+    const lines: string[] = [];
+    lines.push(`# ${item.name}`);
+    lines.push("");
+    lines.push("## 一句话理解");
+    lines.push(item.simpleExplanation || item.description || "");
+    lines.push("");
+    lines.push("## 示例");
+    for (const ex of item.examples || []) {
+      lines.push(`### ${ex.title}`);
+      lines.push(ex.content || "");
+      lines.push("");
+    }
+    return lines.join("\n");
+  };
+
+  const importStaticTerms = async () => {
+    if (!token) {
+      return;
+    }
+    setImporting(true);
+    setError("");
+    try {
+      const payload = await adminApi.listTerms(token);
+      const existing = ((payload as any)?.items || []) as TermRow[];
+      const slugSet = new Set(existing.map((x) => String(x.slug || "").trim().toLowerCase()));
+      let created = 0;
+      for (const t of termsCatalog) {
+        const slug = String(t.slug || "").trim().toLowerCase();
+        if (!slug || slugSet.has(slug)) {
+          continue;
+        }
+        await adminApi.createTerm(token, {
+          slug: t.slug,
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          readingMinutes: t.readingMinutes || 5,
+          coverImageUrl: t.image || "",
+          contentMarkdown: buildMarkdownFromStatic(t),
+          contentJson: {
+            simpleExplanation: t.simpleExplanation || "",
+            examples: t.examples || [],
+            aliases: t.aliases || [],
+            references: t.references || [],
+          },
+          status: "published",
+          contentVersion: t.contentVersion || "static-migrated",
+        });
+        slugSet.add(slug);
+        created += 1;
+      }
+      await reload();
+      alert(`静态词库迁移完成：新增 ${created} 条，重复已跳过。`);
+    } catch (e) {
+      setError((e as Error)?.message || "迁移失败");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl border-border p-5 bg-white">
@@ -142,6 +204,9 @@ export function AdminTerms() {
           <Button className="rounded-full" onClick={() => void reload()} disabled={loading}>
             刷新
           </Button>
+          <Button variant="outline" className="rounded-full" onClick={() => void importStaticTerms()} disabled={importing || loading}>
+            {importing ? "迁移中…" : "一键迁移静态词库"}
+          </Button>
           <Button
             className="rounded-full bg-primary hover:bg-accent"
             onClick={() =>
@@ -154,7 +219,7 @@ export function AdminTerms() {
                 coverImageUrl: "",
                 contentMarkdown: "",
                 contentJson: {},
-                status: "draft",
+                status: "published",
                 contentVersion: "",
               })
             }

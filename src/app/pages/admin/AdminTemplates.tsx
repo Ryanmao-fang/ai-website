@@ -150,7 +150,7 @@ export function AdminTemplates() {
                 minTier: "standard",
                 contentMarkdown: "",
                 contentJson: {},
-                status: "draft",
+                status: "published",
                 contentVersion: "",
               })
             }
