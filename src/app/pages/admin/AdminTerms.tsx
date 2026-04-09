@@ -95,17 +95,47 @@ export function AdminTerms() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const buildTermPayload = () => {
+    if (!editing) {
+      return null;
+    }
+    const aliases = String(editing.aliasesText || "")
+      .split(/[\n,，、]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const practicalActions = (editing.practicalActions || []).filter((p: any) => p && String(p.name || "").trim());
+    const examples = (editing.examples || []).filter((e: any) => e && (String(e.title || "").trim() || String(e.content || "").trim()));
+    const references = (editing.references || []).filter((r: any) => r && String(r.url || "").trim());
+    const relatedTerms = (editing.relatedTerms || []).filter((r: any) => r && String(r.slug || "").trim());
+    const relatedToolLinks = (editing.relatedToolLinks || []).filter((t: any) => t && String(t.href || "").trim());
+    const contentJson = {
+      ...(editing.contentJson || {}),
+      simpleExplanation: String(editing.simpleExplanation || ""),
+      practicalActions,
+      examples,
+      references,
+      aliases,
+      relatedTerms,
+      relatedToolLinks,
+    };
+    return { ...editing, contentJson };
+  };
+
   const saveEditing = async () => {
     if (!token || !editing) {
+      return;
+    }
+    const payload = buildTermPayload();
+    if (!payload) {
       return;
     }
     setLoading(true);
     setError("");
     try {
       if (editing.id) {
-        await adminApi.updateTerm(token, String(editing.id), editing);
+        await adminApi.updateTerm(token, String(editing.id), payload);
       } else {
-        await adminApi.createTerm(token, editing);
+        await adminApi.createTerm(token, payload);
       }
       setEditing(null);
       await reload();
@@ -148,6 +178,7 @@ export function AdminTerms() {
       if (!item) {
         throw new Error("未获取到详情数据");
       }
+      const cj = (item.content_json || {}) as any;
       setEditing({
         id: item.id,
         slug: item.slug || "",
@@ -162,6 +193,13 @@ export function AdminTerms() {
         contentVersion: item.content_version || "",
         publishAt: toDatetimeLocalValue(item.publish_at),
         unpublishAt: toDatetimeLocalValue(item.unpublish_at),
+        simpleExplanation: String(cj.simpleExplanation || ""),
+        practicalActions: Array.isArray(cj.practicalActions) ? cj.practicalActions : [],
+        examples: Array.isArray(cj.examples) ? cj.examples : [],
+        references: Array.isArray(cj.references) ? cj.references : [],
+        aliasesText: Array.isArray(cj.aliases) ? cj.aliases.join("\n") : "",
+        relatedTerms: Array.isArray(cj.relatedTerms) ? cj.relatedTerms : [],
+        relatedToolLinks: Array.isArray(cj.relatedToolLinks) ? cj.relatedToolLinks : [],
       });
     } catch (e) {
       setError((e as Error)?.message || "加载详情失败");
@@ -340,6 +378,13 @@ export function AdminTerms() {
                 contentVersion: "",
                 publishAt: "",
                 unpublishAt: "",
+                simpleExplanation: "",
+                practicalActions: [],
+                examples: [],
+                references: [],
+                aliasesText: "",
+                relatedTerms: [],
+                relatedToolLinks: [],
               })
             }
           >
@@ -468,6 +513,352 @@ CSV: slug,name,description,category,status`}
                 <option value="approved">已通过</option>
                 <option value="published">已发布</option>
               </select>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">预计阅读（分钟）</p>
+              <Input
+                type="number"
+                min={1}
+                value={editing.readingMinutes}
+                onChange={(e) => setEditing({ ...editing, readingMinutes: Number(e.target.value) || 5 })}
+                className="rounded-full"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-4">
+            <p className="text-sm font-medium text-foreground">主站详情页各区块（与 `/term/:slug` 对应）</p>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">标题下摘要</p>
+              <textarea
+                value={editing.description}
+                onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                className="w-full rounded-2xl border border-border p-3 text-sm min-h-[72px]"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">一句话理解</p>
+              <textarea
+                value={editing.simpleExplanation || ""}
+                onChange={(e) => setEditing({ ...editing, simpleExplanation: e.target.value })}
+                className="w-full rounded-2xl border border-border p-3 text-sm min-h-[80px]"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-muted-foreground">我能用它做什么？（标题、站内路径、按钮文案）</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-7 text-xs"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      practicalActions: [...(editing.practicalActions || []), { name: "", href: "/templates", label: "查看" }],
+                    })
+                  }
+                >
+                  添加一行
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {(editing.practicalActions || []).map((row: any, i: number) => (
+                  <div key={i} className="grid md:grid-cols-3 gap-2 items-end">
+                    <Input
+                      placeholder="标题"
+                      value={row.name || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.practicalActions || [])];
+                        next[i] = { ...next[i], name: e.target.value };
+                        setEditing({ ...editing, practicalActions: next });
+                      }}
+                      className="rounded-full"
+                    />
+                    <Input
+                      placeholder="路径 如 /templates"
+                      value={row.href || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.practicalActions || [])];
+                        next[i] = { ...next[i], href: e.target.value };
+                        setEditing({ ...editing, practicalActions: next });
+                      }}
+                      className="rounded-full font-mono text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="链接文字"
+                        value={row.label || ""}
+                        onChange={(e) => {
+                          const next = [...(editing.practicalActions || [])];
+                          next[i] = { ...next[i], label: e.target.value };
+                          setEditing({ ...editing, practicalActions: next });
+                        }}
+                        className="rounded-full flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full shrink-0"
+                        onClick={() => {
+                          const next = (editing.practicalActions || []).filter((_: any, j: number) => j !== i);
+                          setEditing({ ...editing, practicalActions: next });
+                        }}
+                      >
+                        删
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-muted-foreground">实战案例（标题 + 正文）</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-7 text-xs"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      examples: [...(editing.examples || []), { title: "", content: "" }],
+                    })
+                  }
+                >
+                  添加案例
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {(editing.examples || []).map((ex: any, i: number) => (
+                  <div key={i} className="rounded-2xl border border-border p-3 space-y-2">
+                    <Input
+                      placeholder="案例标题"
+                      value={ex.title || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.examples || [])];
+                        next[i] = { ...next[i], title: e.target.value };
+                        setEditing({ ...editing, examples: next });
+                      }}
+                      className="rounded-full"
+                    />
+                    <textarea
+                      placeholder="案例正文"
+                      value={ex.content || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.examples || [])];
+                        next[i] = { ...next[i], content: e.target.value };
+                        setEditing({ ...editing, examples: next });
+                      }}
+                      className="w-full rounded-2xl border border-border p-2 text-sm min-h-[72px]"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full h-7 text-xs"
+                      onClick={() => {
+                        const next = (editing.examples || []).filter((_: any, j: number) => j !== i);
+                        setEditing({ ...editing, examples: next });
+                      }}
+                    >
+                      删除本案例
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-muted-foreground">参考链接（标题 + URL）</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-7 text-xs"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      references: [...(editing.references || []), { title: "", url: "" }],
+                    })
+                  }
+                >
+                  添加链接
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {(editing.references || []).map((ref: any, i: number) => (
+                  <div key={i} className="flex flex-wrap gap-2 items-center">
+                    <Input
+                      placeholder="标题"
+                      value={ref.title || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.references || [])];
+                        next[i] = { ...next[i], title: e.target.value };
+                        setEditing({ ...editing, references: next });
+                      }}
+                      className="rounded-full flex-1 min-w-[120px]"
+                    />
+                    <Input
+                      placeholder="https://"
+                      value={ref.url || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.references || [])];
+                        next[i] = { ...next[i], url: e.target.value };
+                        setEditing({ ...editing, references: next });
+                      }}
+                      className="rounded-full flex-[2] min-w-[180px] font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => {
+                        const next = (editing.references || []).filter((_: any, j: number) => j !== i);
+                        setEditing({ ...editing, references: next });
+                      }}
+                    >
+                      删
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">别名（每行一个，或中文逗号分隔）</p>
+              <textarea
+                value={editing.aliasesText || ""}
+                onChange={(e) => setEditing({ ...editing, aliasesText: e.target.value })}
+                className="w-full rounded-2xl border border-border p-3 text-sm min-h-[56px]"
+                placeholder="每行一个别名"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-muted-foreground">延伸阅读（slug、标题、分类）</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-7 text-xs"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      relatedTerms: [...(editing.relatedTerms || []), { slug: "", name: "", category: "" }],
+                    })
+                  }
+                >
+                  添加词条
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {(editing.relatedTerms || []).map((r: any, i: number) => (
+                  <div key={i} className="grid md:grid-cols-4 gap-2 items-end">
+                    <Input
+                      placeholder="slug"
+                      value={r.slug || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.relatedTerms || [])];
+                        next[i] = { ...next[i], slug: e.target.value };
+                        setEditing({ ...editing, relatedTerms: next });
+                      }}
+                      className="rounded-full font-mono text-xs"
+                    />
+                    <Input
+                      placeholder="标题"
+                      value={r.name || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.relatedTerms || [])];
+                        next[i] = { ...next[i], name: e.target.value };
+                        setEditing({ ...editing, relatedTerms: next });
+                      }}
+                      className="rounded-full"
+                    />
+                    <Input
+                      placeholder="分类"
+                      value={r.category || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.relatedTerms || [])];
+                        next[i] = { ...next[i], category: e.target.value };
+                        setEditing({ ...editing, relatedTerms: next });
+                      }}
+                      className="rounded-full"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => {
+                        const next = (editing.relatedTerms || []).filter((_: any, j: number) => j !== i);
+                        setEditing({ ...editing, relatedTerms: next });
+                      }}
+                    >
+                      删
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-muted-foreground">相关工具（名称 + 路径）</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-7 text-xs"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      relatedToolLinks: [...(editing.relatedToolLinks || []), { name: "", href: "/tool/" }],
+                    })
+                  }
+                >
+                  添加工具
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {(editing.relatedToolLinks || []).map((t: any, i: number) => (
+                  <div key={i} className="flex flex-wrap gap-2 items-center">
+                    <Input
+                      placeholder="名称"
+                      value={t.name || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.relatedToolLinks || [])];
+                        next[i] = { ...next[i], name: e.target.value };
+                        setEditing({ ...editing, relatedToolLinks: next });
+                      }}
+                      className="rounded-full flex-1 min-w-[100px]"
+                    />
+                    <Input
+                      placeholder="/tool/chatgpt"
+                      value={t.href || ""}
+                      onChange={(e) => {
+                        const next = [...(editing.relatedToolLinks || [])];
+                        next[i] = { ...next[i], href: e.target.value };
+                        setEditing({ ...editing, relatedToolLinks: next });
+                      }}
+                      className="rounded-full flex-[2] min-w-[160px] font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => {
+                        const next = (editing.relatedToolLinks || []).filter((_: any, j: number) => j !== i);
+                        setEditing({ ...editing, relatedToolLinks: next });
+                      }}
+                    >
+                      删
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           {editing.id && token ? (
@@ -641,24 +1032,16 @@ CSV: slug,name,description,category,status`}
               </div>
             </div>
           ) : null}
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">简介</p>
-            <textarea
-              value={editing.description}
-              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-              className="w-full rounded-2xl border border-border p-3 text-sm min-h-[90px]"
-            />
-          </div>
           <CmsImageUrlField
             token={token}
             label="封面图（列表卡片与词条详情顶图）"
-            helper="上传到公开桶后写入 cover_image_url；也可手动粘贴外链。"
+            helper="上传或粘贴图片 URL"
             value={editing.coverImageUrl || ""}
             onChange={(url) => setEditing({ ...editing, coverImageUrl: url })}
             previewClassName="w-full max-w-md h-40"
           />
           <div>
-            <p className="text-xs text-muted-foreground mb-1">正文（Markdown）</p>
+            <p className="text-xs text-muted-foreground mb-1">深度解释（Markdown，对应主站「深度解释」区块）</p>
             <CmsMarkdownToolbar token={token} markdown={editing.contentMarkdown || ""} onChangeMarkdown={(md) => setEditing({ ...editing, contentMarkdown: md })} />
             <textarea
               value={editing.contentMarkdown}

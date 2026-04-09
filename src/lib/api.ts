@@ -65,6 +65,17 @@ export const apiClient = {
     body: { level: string; itemType: string; itemId: number; completed: boolean }
   ) => request("/api/learning/progress", { method: "POST", body: JSON.stringify(body) }, token),
 
+  getLearningAssessment: (level: string, dayIndex: number) =>
+    request(`/api/learning/assessment/${encodeURIComponent(level)}/${dayIndex}`, { method: "GET" }),
+
+  getLearningDayExam: (token: string, level: string) =>
+    request(`/api/learning/day-exam/${encodeURIComponent(level)}`, { method: "GET" }, token),
+
+  submitLearningDayExam: (
+    token: string,
+    body: { level: string; dayIndex: number; answers: Record<string, number> }
+  ) => request("/api/learning/day-exam/submit", { method: "POST", body: JSON.stringify(body) }, token),
+
   listMyTickets: (token: string) => request("/api/tickets/mine", { method: "GET" }, token),
   createTicket: (token: string, body: { category: string; title: string; body: string }) =>
     request("/api/tickets/", { method: "POST", body: JSON.stringify(body) }, token),

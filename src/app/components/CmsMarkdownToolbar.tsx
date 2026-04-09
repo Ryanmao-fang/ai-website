@@ -9,10 +9,7 @@ type Props = {
   onChangeMarkdown: (next: string) => void;
 };
 
-/**
- * 在 Markdown 末尾插入图片/视频语法；B 站 / YouTube 请用按钮插入「单独一行」视频页链接（渲染器会嵌播放器）。
- * 图片：![说明](url)  ·  视频文件：![讲解](url.mp4)
- */
+/** 向 Markdown 插入图/视频/B站/YouTube 行 */
 export function CmsMarkdownToolbar({ token, markdown, onChangeMarkdown }: Props) {
   const imgRef = useRef<HTMLInputElement>(null);
   const vidRef = useRef<HTMLInputElement>(null);
@@ -54,10 +51,7 @@ export function CmsMarkdownToolbar({ token, markdown, onChangeMarkdown }: Props)
 
   return (
     <div className="rounded-2xl border border-border bg-muted/30 p-3 space-y-2">
-      <p className="text-xs text-muted-foreground">
-        插图/视频会写入正文 Markdown。国内用户请优先用「B站链接」（需
-        bilibili.com 视频页完整链接，短链 b23.tv 请先浏览器打开后复制地址栏）。YouTube 仅作境外补充。
-      </p>
+      <p className="text-xs text-muted-foreground">视频页链接请单独一行；B 站请用 bilibili.com 完整地址。</p>
       <div className="flex flex-wrap gap-2 items-center">
         <input
           ref={imgRef}

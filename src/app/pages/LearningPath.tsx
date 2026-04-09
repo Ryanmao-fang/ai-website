@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2, Lock, Award, Users } from "lucide-react";
+import { Sparkles, BookOpen, Wrench, FileText, CheckCircle2, Lock } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -24,6 +24,16 @@ import {
   togglePathItemCompleted,
   mergeRemoteLearningRows,
 } from "@/lib/learningProgress";
+import { LearningDayExamPanel } from "../components/LearningDayExamPanel";
+
+type ExamDayRow = {
+  dayIndex: number;
+  scoreA: number;
+  scoreB: number;
+  scoreC: number;
+  total: number;
+  passed: boolean;
+};
 
 export function LearningPath() {
   const { membershipTier, accessToken, userId } = useAuth();
@@ -32,6 +42,8 @@ export function LearningPath() {
   const location = useLocation();
   const [selectedLevel, setSelectedLevel] = useState<LearningPathLevelId>("beginner");
   const [progressTick, setProgressTick] = useState(0);
+  const [examByDay, setExamByDay] = useState<Record<number, ExamDayRow>>({});
+  const [examTick, setExamTick] = useState(0);
 
   useEffect(() => {
     const hash = location.hash.replace("#", "");
@@ -158,6 +170,32 @@ export function LearningPath() {
     };
   }, [accessToken]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!accessToken || !canAccessLevel(selectedLevel)) {
+        return;
+      }
+      try {
+        const res = await apiClient.getLearningDayExam(accessToken, selectedLevel);
+        const m: Record<number, ExamDayRow> = {};
+        for (const row of (res?.items || []) as ExamDayRow[]) {
+          m[row.dayIndex] = row;
+        }
+        if (!cancelled) {
+          setExamByDay(m);
+        }
+      } catch {
+        if (!cancelled) {
+          setExamByDay({});
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, selectedLevel, examTick, membershipTier]);
+
   return (
     <>
       <AccessNoticeDialog
@@ -175,7 +213,7 @@ export function LearningPath() {
           >
             <h1 className="text-4xl font-semibold text-foreground mb-4">AI学习路线</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              已有 12,847 人学习 · 平均完成率 68%。按天推进，支持进度同步与阶段奖励。
+              按天学习；每日含 A/B/C 考核共 100 分，80 分及以上解锁下一天。
             </p>
           </motion.div>
 
@@ -288,6 +326,49 @@ export function LearningPath() {
                 const title = resolveTitle(item.type, item.id);
                 const desc = resolveDescription(item.type, item.id);
                 const completed = isPathItemCompleted(selectedLevel, item.type, item.id);
+                const dayUnlocked = 0 === index || Boolean(examByDay[index - 1]?.passed);
+                const examRow = examByDay[index] || null;
+                const innerBlock = (
+                  <div className="flex items-center gap-4 flex-1 min-w-0 group">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex-shrink-0">
+                        <div
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                            completed ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                          } ${dayUnlocked ? "group-hover:scale-110 transition-transform" : ""}`}
+                        >
+                          {completed ? <CheckCircle2 className="w-6 h-6" /> : getItemIcon(item.type)}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3
+                            className={`font-semibold ${
+                              completed ? "text-primary" : dayUnlocked ? "text-foreground group-hover:text-primary" : "text-muted-foreground"
+                            } transition-colors`}
+                          >
+                            {title}
+                          </h3>
+                          <Badge variant="secondary" className="rounded-full bg-muted/50 text-muted-foreground border-0 text-xs">
+                            {item.type === "term" && "名词"}
+                            {item.type === "tool" && "工具"}
+                            {item.type === "template" && "模板"}
+                          </Badge>
+                          {!dayUnlocked ? (
+                            <Badge variant="secondary" className="rounded-full border-0 text-xs gap-1">
+                              <Lock className="w-3 h-3" />
+                              未解锁
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-muted-foreground text-sm line-clamp-2">{desc}</p>
+                      </div>
+                      {completed ? (
+                        <Badge className="rounded-full bg-primary/10 text-primary border-0 shrink-0">已完成</Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                );
                 return (
                   <motion.div
                     key={`${item.type}-${item.id}`}
@@ -295,63 +376,28 @@ export function LearningPath() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <Card
-                      className={`rounded-3xl border-border p-6 transition-all ${
-                        completed ? "bg-primary/5" : "bg-white"
-                      }`}
-                    >
+                    <Card className={`rounded-3xl border-border p-6 transition-all ${completed ? "bg-primary/5" : "bg-white"}`}>
                       <p className="text-xs text-muted-foreground mb-2">Day {index + 1}</p>
-                      <div className="flex items-center gap-4">
-                        <Link to={getItemLink(item.type, item.id)} className="flex-1 min-w-0 group">
-                          <div className="flex items-center gap-4">
-                            <div className="flex-shrink-0">
-                              <div
-                                className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                                  completed
-                                    ? "bg-primary text-white"
-                                    : "bg-muted text-muted-foreground"
-                                } group-hover:scale-110 transition-transform`}
-                              >
-                                {completed ? <CheckCircle2 className="w-6 h-6" /> : getItemIcon(item.type)}
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3
-                                  className={`font-semibold ${
-                                    completed
-                                      ? "text-primary"
-                                      : "text-foreground group-hover:text-primary"
-                                  } transition-colors`}
-                                >
-                                  {title}
-                                </h3>
-                                <Badge
-                                  variant="secondary"
-                                  className="rounded-full bg-muted/50 text-muted-foreground border-0 text-xs"
-                                >
-                                  {item.type === "term" && "名词"}
-                                  {item.type === "tool" && "工具"}
-                                  {item.type === "template" && "模板"}
-                                </Badge>
-                              </div>
-                              <p className="text-muted-foreground text-sm line-clamp-2">{desc}</p>
-                            </div>
-                            {completed ? (
-                              <Badge className="rounded-full bg-primary/10 text-primary border-0 shrink-0">
-                                已完成
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </Link>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        {dayUnlocked ? (
+                          <Link to={getItemLink(item.type, item.id)} className="flex-1 min-w-0">
+                            {innerBlock}
+                          </Link>
+                        ) : (
+                          <div className="flex-1 min-w-0 opacity-80 cursor-not-allowed">{innerBlock}</div>
+                        )}
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="rounded-full shrink-0 border-border"
+                          disabled={!dayUnlocked}
                           onClick={() => {
                             if (!userId) {
                               openLogin();
+                              return;
+                            }
+                            if (!dayUnlocked) {
                               return;
                             }
                             const next = !completed;
@@ -378,32 +424,20 @@ export function LearningPath() {
                           {completed ? "取消完成" : "标记完成"}
                         </Button>
                       </div>
+                      <LearningDayExamPanel
+                        level={selectedLevel}
+                        dayIndex={index}
+                        unlocked={dayUnlocked}
+                        accessToken={accessToken}
+                        initial={examRow}
+                        onUpdate={() => setExamTick((n) => n + 1)}
+                      />
                     </Card>
                   </motion.div>
                 );
               })
                 : null}
             </div>
-
-            {levelAllowed ? (
-              <Card className="rounded-3xl border-border p-8 mt-8 bg-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <Award className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">完成奖励</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  完成当前路线全部内容后，获得「AI入门者」学习证书与路线徽章。
-                </p>
-              </Card>
-            ) : null}
-
-            <Card className="rounded-3xl border-border p-8 mt-6 bg-white">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-foreground">同期学习伙伴</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">24 人正在学习本路线，小明刚刚完成了 Day 3。</p>
-            </Card>
 
             <Card className="rounded-3xl border-border p-8 mt-10 bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
               <div className="flex flex-wrap items-center gap-2 mb-2">

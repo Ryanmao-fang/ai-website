@@ -13,7 +13,7 @@ type Props = {
   previewClassName?: string;
 };
 
-/** 封面 / 工具图标等：可填 URL，也可一键上传到素材库并填入 */
+/** 封面或图标：URL 或上传 */
 export function CmsImageUrlField({ token, label, helper, value, onChange, previewClassName }: Props) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export function CmsImageUrlField({ token, label, helper, value, onChange, previe
           </Button>
         </div>
       </div>
-      {helper ? <p className="text-[11px] text-muted-foreground">{helper}</p> : null}
+      {helper ? <p className="text-[11px] text-muted-foreground/90">{helper}</p> : null}
       {err ? <p className="text-xs text-destructive">{err}</p> : null}
       {isHttp ? (
         <div className={`rounded-2xl border border-border overflow-hidden bg-muted/20 ${previewClassName || "w-24 h-24"}`}>

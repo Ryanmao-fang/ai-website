@@ -306,9 +306,7 @@ export function ToolDetail() {
                       <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
                       <span className="font-medium text-foreground">{displayAvg}</span>
                       <span className="text-muted-foreground text-sm">
-                        {avgRating && avgRating.count > 0
-                          ? `用户评分（${avgRating.count} 人）`
-                          : "目录参考分 · 登录后参与打分"}
+                        {avgRating && avgRating.count > 0 ? `评分（${avgRating.count} 人）` : "评分"}
                       </span>
                     </div>
                     {showFullTutorial ? (
@@ -332,14 +330,11 @@ export function ToolDetail() {
                         {rateHint ? <p className="text-xs text-muted-foreground">{rateHint}</p> : null}
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">登录后可参与星级评分</p>
+                      <p className="text-xs text-muted-foreground">登录后可评分</p>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    2.3 万人使用 · 适合：{tool.suitableFor || "写作 / 编程 / 提效"}
-                  </p>
                   {tool.suitableFor ? (
-                    <p className="text-sm text-muted-foreground mb-2">适合人群：{tool.suitableFor}</p>
+                    <p className="text-sm text-muted-foreground mb-3">适合：{tool.suitableFor}</p>
                   ) : null}
                   <div className="flex flex-wrap gap-3">
                     <a href={tool.link} target="_blank" rel="noopener noreferrer">
@@ -493,7 +488,7 @@ export function ToolDetail() {
                 transition={{ delay: 0.3 }}
                 className="mb-8"
               >
-                <h2 className="text-2xl font-semibold text-foreground mb-6">核心功能（带演示）</h2>
+                <h2 className="text-2xl font-semibold text-foreground mb-6">核心功能</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {tool.useCases.map((useCase, index) => (
                     <Card
@@ -542,9 +537,8 @@ export function ToolDetail() {
                   <h2 className="text-xl font-semibold text-foreground mb-3">Prompt 模板库（工具专用）</h2>
                   <div className="space-y-2">
                     {promptTemplates.map((p) => (
-                      <div key={p} className="rounded-2xl border border-border p-3 text-sm flex items-center justify-between gap-3">
-                        <span>{p}</span>
-                        <Badge variant="secondary" className="rounded-full border-0">会员</Badge>
+                      <div key={p} className="rounded-2xl border border-border p-3 text-sm">
+                        {p}
                       </div>
                     ))}
                   </div>
