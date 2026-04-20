@@ -1,14 +1,23 @@
-import { RouterProvider } from "react-router";
-import { router } from "./routes";
-import { AuthProvider } from "./context/AuthContext";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { useState } from "react";
+import Navigation from "./components/navigation";
+import Homepage from "./components/homepage";
+import CustomForm from "./components/custom-form";
+
+type PageType = "home" | "custom";
 
 export default function App() {
+  const [currentPage, setCurrentPage] = useState<PageType>("home");
+
+  const handleNavigate = (page: PageType) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </ErrorBoundary>
+    <div className="min-h-screen bg-white text-[#333333]">
+      <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
+      {"home" === currentPage && <Homepage onNavigate={handleNavigate} />}
+      {"custom" === currentPage && <CustomForm onNavigate={handleNavigate} />}
+    </div>
   );
 }
