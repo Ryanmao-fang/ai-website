@@ -9,6 +9,7 @@ interface CaseCard {
   scenario: string;
   highlight: string;
   image: string;
+  fallbackImage: string;
 }
 
 const serviceCards = [
@@ -34,19 +35,22 @@ const cases: CaseCard[] = [
     name: "办公自动化工作流定制",
     scenario: "企业行政办公",
     highlight: "自动汇总数据、生成周报、同步邮件，减少80%重复工作。",
-    image: "/assets/case-workflow.svg",
+    image: "/assets/Image/workflow.png",
+    fallbackImage: "/assets/case-workflow.svg",
   },
   {
     name: "副业变现智能体定制",
     scenario: "自媒体副业",
     highlight: "自动生成文案、标题、排版建议，多平台适配并提升内容产出效率。",
-    image: "/assets/case-agent.svg",
+    image: "/assets/Image/agent.png",
+    fallbackImage: "/assets/case-agent.svg",
   },
   {
     name: "客户需求检索工具定制",
     scenario: "企业销售部门",
     highlight: "快速检索客户需求并自动匹配方案，显著提升客户对接效率。",
-    image: "/assets/case-tool.svg",
+    image: "/assets/Image/application.png",
+    fallbackImage: "/assets/case-tool.svg",
   },
 ];
 
@@ -107,6 +111,7 @@ const faqs = [
 export default function Homepage({ onNavigate }: HomepageProps) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   const heroGradient = useMemo(
     () => "bg-gradient-to-br from-[#165DFF] via-[#0F4CD5] to-[#165DFF]",
@@ -175,11 +180,22 @@ export default function Homepage({ onNavigate }: HomepageProps) {
               >
                 <h3 className="text-base font-semibold text-[#333333]">{caseItem.name}</h3>
                 <p className="mt-1 text-sm text-[#666666]">应用场景：{caseItem.scenario}</p>
-                <button className="mt-4 w-full" onClick={() => setPreviewImage(caseItem.image)}>
+                <button
+                  className="mt-4 w-full"
+                  onClick={() =>
+                    setPreviewImage(brokenImages[caseItem.name] ? caseItem.fallbackImage : caseItem.image)
+                  }
+                >
                   <img
-                    src={caseItem.image}
+                    src={brokenImages[caseItem.name] ? caseItem.fallbackImage : caseItem.image}
                     alt={caseItem.name}
                     className="h-44 w-full rounded-lg border border-[#E0E6ED] object-cover"
+                    onError={() =>
+                      setBrokenImages((prev) => ({
+                        ...prev,
+                        [caseItem.name]: true,
+                      }))
+                    }
                   />
                 </button>
                 <p className="mt-4 text-sm text-[#666666]">{caseItem.highlight}</p>
@@ -245,13 +261,22 @@ export default function Homepage({ onNavigate }: HomepageProps) {
       <footer className="bg-[#165DFF] px-4 py-14 text-center text-white md:px-6">
         <div className="mx-auto max-w-4xl">
           <img
-            src="/assets/wechat-qr-placeholder.svg"
-            alt="微信二维码占位图"
+            src="/assets/Image/qrcode.png"
+            alt="微信二维码"
             className="mx-auto h-28 w-28 rounded-lg border border-white/40 bg-white p-1"
+            onError={(event) => {
+              const target = event.currentTarget;
+              target.src = "/assets/wechat-qr-placeholder.svg";
+            }}
           />
           <p className="mt-3 text-sm text-[#E8F3FF]">联系方式：微信（二维码图片）</p>
           <p className="mt-4 text-sm">版权所有 © 2026 AI提效工具定制 保留所有权利</p>
-          <p className="mt-1 text-sm text-[#E8F3FF]">域名：commononesAI.com（上线时替换为你的现有域名）</p>
+          <p className="mt-1 text-sm text-[#E8F3FF]">
+            域名：
+            <a href="https://www.commononesai.cn/" className="underline underline-offset-2" target="_blank" rel="noreferrer">
+              https://www.commononesai.cn/
+            </a>
+          </p>
         </div>
       </footer>
 
