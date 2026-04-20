@@ -34,10 +34,10 @@ export function Help() {
   const [openId, setOpenId] = useState<number | null>(0);
 
   return (
-    <div className="min-h-screen">
+    <div className="figma-page">
       <section className="relative overflow-hidden py-16 md:py-20">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+        <div className="figma-container relative text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
               <span className="text-sm">帮助中心</span>
@@ -59,7 +59,7 @@ export function Help() {
       </section>
 
       <section className="pb-20 bg-white">
-        <div className="max-w-3xl mx-auto px-4 space-y-3">
+        <div className="figma-container max-w-3xl space-y-3">
           {faqItems.map((item, index) => {
             const open = openId === index;
             return (
@@ -86,7 +86,7 @@ export function Help() {
           })}
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 mt-12">
+        <div className="figma-container max-w-3xl mt-12">
           <Card className="rounded-3xl border-border p-6 space-y-4">
             <h2 className="font-semibold text-foreground">浏览记录与打印</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">

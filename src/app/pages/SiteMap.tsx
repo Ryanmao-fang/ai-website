@@ -54,10 +54,10 @@ export function SiteMap() {
   const { openLogin } = useLoginDialog();
 
   return (
-    <div className="min-h-screen">
+    <div className="figma-page">
       <section className="relative overflow-hidden py-16 md:py-20">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+        <div className="figma-container relative text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">站点地图</h1>
             <p className="text-muted-foreground">快速找到常用页面</p>
@@ -66,7 +66,7 @@ export function SiteMap() {
       </section>
 
       <section className="pb-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-3 gap-8">
+        <div className="figma-container grid md:grid-cols-3 gap-8">
           {groups.map((g, gi) => (
             <motion.div key={g.title} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: gi * 0.05 }}>
               <Card className="rounded-3xl border-border p-6">

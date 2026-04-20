@@ -3,8 +3,8 @@ import { siteConfig } from "@/lib/siteConfig";
 
 export function UserAgreement() {
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container max-w-4xl">
         <h1 className="text-3xl font-semibold text-foreground mb-2">用户协议</h1>
         <p className="text-sm text-muted-foreground mb-6">
           最近修订：{siteConfig.legalLastUpdated}；适用于 {siteConfig.brandName} 网站及相关在线服务。

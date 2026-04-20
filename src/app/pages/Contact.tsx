@@ -11,10 +11,10 @@ export function Contact() {
   )}`;
 
   return (
-    <div className="min-h-screen">
-      <section className="relative overflow-hidden py-16 md:py-24">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+    <div className="figma-page">
+      <section className="figma-hero md:py-24">
+        <div className="figma-hero-bg" />
+        <div className="figma-container relative text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
               <MessageCircle className="w-4 h-4" />

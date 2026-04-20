@@ -26,9 +26,9 @@ export function ToolsCompare() {
   const tools = ids.map((id) => getToolById(String(id))).filter(Boolean) as typeof toolsCatalog;
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
+    <div className="figma-page py-12 bg-secondary/30">
       <PageMeta title="工具对比" description="并排查看多款 AI 工具字段，便于选型。" />
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="figma-container max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl font-semibold text-foreground mb-2">工具对比</h1>
           <p className="text-sm text-muted-foreground">

@@ -6,8 +6,8 @@ import { motion } from "motion/react";
 
 export function NotFound() {
   return (
-    <div className="min-h-screen flex items-center py-20">
-      <div className="max-w-lg mx-auto px-4 w-full text-center">
+    <div className="figma-page flex items-center py-20">
+      <div className="figma-container max-w-lg w-full text-center">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="rounded-3xl border-border p-10 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent">
             <p className="text-6xl font-semibold text-primary mb-2">404</p>

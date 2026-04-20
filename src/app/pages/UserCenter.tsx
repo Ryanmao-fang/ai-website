@@ -20,6 +20,7 @@ export function UserCenter() {
     email && email.includes("@") ? email.split("@")[0] : email || "学习者";
 
   const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +37,28 @@ export function UserCenter() {
       } catch {
         if (!cancelled) {
           setFavoriteCount(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!accessToken) {
+        return;
+      }
+      try {
+        const payload = await apiClient.listMyMessages(accessToken);
+        if (!cancelled) {
+          setMessages((payload?.items || []) as any[]);
+        }
+      } catch {
+        if (!cancelled) {
+          setMessages([]);
         }
       }
     })();
@@ -98,8 +121,8 @@ export function UserCenter() {
   };
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -239,6 +262,44 @@ export function UserCenter() {
                     ))}
                   </div>
                 )}
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <h2 className="text-xl font-semibold text-foreground mb-4">消息通知中心</h2>
+              <Card className="rounded-3xl border-border p-6 bg-white">
+                <div className="space-y-3">
+                  {messages.map((m) => (
+                    <div key={m.id} className={`rounded-2xl border p-4 ${m.is_read ? "border-border" : "border-primary/40 bg-primary/5"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-foreground">{m.title}</p>
+                        <span className="text-xs text-muted-foreground">{m.created_at ? new Date(m.created_at).toLocaleString() : "-"}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{m.body}</p>
+                      {!m.is_read && accessToken ? (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline mt-2"
+                          onClick={async () => {
+                            try {
+                              await apiClient.markMessageRead(accessToken, Number(m.id));
+                              setMessages((prev) => prev.map((x) => (Number(x.id) === Number(m.id) ? { ...x, is_read: true } : x)));
+                            } catch {
+                              // 忽略错误，避免阻塞页面
+                            }
+                          }}
+                        >
+                          标记已读
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                  {0 === messages.length ? <p className="text-sm text-muted-foreground">暂无消息。</p> : null}
+                </div>
               </Card>
             </motion.div>
           </div>

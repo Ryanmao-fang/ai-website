@@ -6,31 +6,50 @@ import { Input } from "../components/ui/input";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import { siteConfig } from "@/lib/siteConfig";
+import { useAuth } from "../context/AuthContext";
+import { apiClient } from "@/lib/api";
 
 export function TemplateSubmit() {
+  const { accessToken } = useAuth();
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [author, setAuthor] = useState("");
+  const [scenario, setScenario] = useState("");
   const [hint, setHint] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim() || !summary.trim()) {
       setHint("请填写模板标题与正文要点。");
       return;
     }
-    const body = `【模板投稿】\n标题：${title.trim()}\n署名/联系：${
-      author.trim() || "（未填）"
-    }\n\n正文：\n${summary.trim()}\n\n-- 我确认不侵犯第三方权利，并同意运营方做脱敏与改编后择优入库。`;
-    const href = `mailto:${siteConfig.supportEmail}?subject=${encodeURIComponent(
-      `模板投稿：${title.trim()}`
-    )}&body=${encodeURIComponent(body)}`;
-    setHint("已尝试打开邮件客户端。若未成功，请手动复制正文发送。");
-    window.location.href = href;
+    if (!accessToken) {
+      setHint("请先登录后提交模板需求。");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiClient.submitCustomTemplateRequest(accessToken, {
+        title: title.trim(),
+        summary: summary.trim(),
+        contact: author.trim(),
+        scenario: scenario.trim(),
+      });
+      setHint("提交成功，运营会在审核后通过站内消息反馈进度。");
+      setTitle("");
+      setSummary("");
+      setAuthor("");
+      setScenario("");
+    } catch (e) {
+      setHint((e as Error).message || "提交失败，请稍后重试");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-2xl mx-auto px-4">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container max-w-2xl">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">提交模板</h1>
           <p className="text-muted-foreground">
@@ -63,6 +82,16 @@ export function TemplateSubmit() {
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="ts-scenario">适用场景（可选）</Label>
+            <Input
+              id="ts-scenario"
+              value={scenario}
+              onChange={(e) => setScenario(e.target.value)}
+              className="rounded-2xl border-border bg-input-background"
+              placeholder="如：电商详情页、短视频脚本、AI绘图提示词"
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="ts-body">模板正文</Label>
             <textarea
               id="ts-body"
@@ -75,8 +104,13 @@ export function TemplateSubmit() {
           <p className="text-xs text-muted-foreground leading-relaxed">
             运营团队会在审核后择期入库；若涉及侵权或违规内容将不予收录。侵权投诉请同样发至 {siteConfig.supportEmail} 。
           </p>
-          <Button type="button" className="w-full rounded-full bg-primary hover:bg-accent" onClick={submit}>
-            发送到审核邮箱
+          <Button
+            type="button"
+            className="w-full rounded-full bg-primary hover:bg-accent"
+            onClick={() => void submit()}
+            disabled={submitting}
+          >
+            {submitting ? "提交中..." : "提交到模板审核中心"}
           </Button>
           {hint ? <p className="text-sm text-muted-foreground text-center">{hint}</p> : null}
         </Card>

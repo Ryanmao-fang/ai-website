@@ -10,8 +10,8 @@ export function AccountSettings() {
   const [cleared, setCleared] = useState(false);
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
           <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">账号与隐私</h1>
           <p className="text-muted-foreground">管理本机浏览痕迹与查阅合规说明</p>

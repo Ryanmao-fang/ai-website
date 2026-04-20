@@ -118,8 +118,8 @@ export function ToolsList() {
   }, [filteredTools]);
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

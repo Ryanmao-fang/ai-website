@@ -15,6 +15,7 @@ import { highlightTextParts } from "@/lib/textHighlight";
 import { PageMeta } from "../components/PageMeta";
 import { getTermById } from "@/content/termsCatalog";
 import { getToolById } from "@/content/toolsCatalog";
+import { trackEventSafe } from "@/lib/telemetry";
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,6 +140,11 @@ export function SearchPage() {
   const runSearch = () => {
     const q = query.trim();
     if (q) {
+      void trackEventSafe({
+        eventName: "search_submit",
+        userId,
+        payload: { query: q.slice(0, 80), entry: "search_page" },
+      });
       recordSearchQuery(q);
       setHistory(listSearchHistory());
       const ty = searchParams.get("type");
@@ -159,7 +165,7 @@ export function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="figma-page">
       <PageMeta
         title={effectiveQuery ? `搜索：${effectiveQuery}` : "全站搜索"}
         description={
@@ -168,9 +174,9 @@ export function SearchPage() {
             : "搜索 AI 名词、工具与模板。"
         }
       />
-      <section className="relative overflow-hidden py-16 md:py-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <section className="figma-hero">
+        <div className="figma-hero-bg" />
+        <div className="figma-container relative">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -253,7 +259,7 @@ export function SearchPage() {
       </section>
 
       <section className="pb-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="figma-container">
           {!effectiveQuery ? (
             <p className="text-center text-muted-foreground">输入关键词后开始搜索，或使用上方「最近搜索」</p>
           ) : (

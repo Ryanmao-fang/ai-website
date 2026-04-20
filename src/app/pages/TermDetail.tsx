@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, Navigate } from "react-router";
-import { ArrowLeft, Heart, Share2, BookOpen, Sparkles, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Heart, Share2, BookOpen, Sparkles, Clock, ThumbsUp, ThumbsDown, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -30,6 +30,9 @@ export function TermDetail() {
   const [feedbackHint, setFeedbackHint] = useState("");
   const [cmsTerm, setCmsTerm] = useState<any | null>(null);
   const [cmsLoading, setCmsLoading] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [commentHint, setCommentHint] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -94,11 +97,34 @@ export function TermDetail() {
     });
   }, [effectiveTerm]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!effectiveTerm) {
+      return;
+    }
+    const targetId = effectiveTerm.id > 0 ? String(effectiveTerm.id) : String(effectiveTerm.slug || "");
+    (async () => {
+      try {
+        const payload = await apiClient.listComments("term", targetId);
+        if (!cancelled) {
+          setComments((payload?.items || []) as any[]);
+        }
+      } catch {
+        if (!cancelled) {
+          setComments([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveTerm]);
+
   if (!effectiveTerm) {
     if (cmsLoading) {
       return (
-        <div className="min-h-screen py-12 bg-background">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-muted-foreground">加载中…</div>
+        <div className="figma-page py-12 bg-background">
+          <div className="figma-container max-w-4xl text-muted-foreground">加载中…</div>
         </div>
       );
     }
@@ -106,14 +132,35 @@ export function TermDetail() {
   }
 
   const refreshFavorite = useCallback(async () => {
-    if (!accessToken || !effectiveTerm || effectiveTerm.id <= 0 || !tierMeetsMin(membershipTier, "standard")) {
+    if (!accessToken || !effectiveTerm || !tierMeetsMin(membershipTier, "standard")) {
+      setIsFavorite(false);
+      return;
+    }
+    const slugKey = String(effectiveTerm.slug || "").trim();
+    const idKey = effectiveTerm.id > 0 ? String(effectiveTerm.id) : "";
+    if (!slugKey && !idKey) {
       setIsFavorite(false);
       return;
     }
     try {
       const payload = await apiClient.getFavorites(accessToken);
       const rows = (payload?.items || []) as { target_type: string; target_id: string }[];
-      const hit = rows.some((r) => "term" === r.target_type && r.target_id === String(effectiveTerm.id));
+      const hit = rows.some((r) => {
+        if ("term" !== r.target_type) {
+          return false;
+        }
+        if (slugKey && r.target_id === slugKey) {
+          return true;
+        }
+        if (idKey && r.target_id === idKey) {
+          return true;
+        }
+        if (slugKey && /^\d+$/.test(r.target_id)) {
+          const t = getTermById(r.target_id);
+          return t ? t.slug === slugKey : false;
+        }
+        return false;
+      });
       setIsFavorite(hit);
     } catch {
       setIsFavorite(false);
@@ -147,7 +194,13 @@ export function TermDetail() {
   }, [effectiveTerm]);
 
   const handleFavoriteClick = async () => {
-    if (!effectiveTerm || effectiveTerm.id <= 0) {
+    if (!effectiveTerm) {
+      return;
+    }
+    const targetId =
+      String(effectiveTerm.slug || "").trim() ||
+      (effectiveTerm.id > 0 ? String(effectiveTerm.id) : "");
+    if (!targetId) {
       return;
     }
     if (!accessToken) {
@@ -159,7 +212,7 @@ export function TermDetail() {
       return;
     }
     try {
-      await apiClient.toggleFavorite(accessToken, { targetType: "term", targetId: String(effectiveTerm.id) });
+      await apiClient.toggleFavorite(accessToken, { targetType: "term", targetId });
       await refreshFavorite();
     } catch (e) {
       alert((e as Error).message || "操作失败");
@@ -198,6 +251,47 @@ export function TermDetail() {
       setFeedbackHint("感谢反馈，已记录。");
     } catch (e) {
       setFeedbackHint((e as Error).message || "提交失败");
+    }
+  };
+
+  const postComment = async () => {
+    if (!accessToken) {
+      setCommentHint("请先登录后发表评论。");
+      return;
+    }
+    const text = commentText.trim();
+    if (!text) {
+      setCommentHint("请输入评论内容。");
+      return;
+    }
+    if (!effectiveTerm) {
+      return;
+    }
+    const targetId = effectiveTerm.id > 0 ? String(effectiveTerm.id) : String(effectiveTerm.slug || "");
+    try {
+      await apiClient.postComment(accessToken, {
+        targetType: "term",
+        targetId,
+        content: text,
+      });
+      const payload = await apiClient.listComments("term", targetId);
+      setComments((payload?.items || []) as any[]);
+      setCommentText("");
+      setCommentHint("评论已发布。");
+    } catch (e) {
+      setCommentHint((e as Error).message || "发布失败");
+    }
+  };
+
+  const removeComment = async (id: number) => {
+    if (!accessToken) {
+      return;
+    }
+    try {
+      await apiClient.deleteComment(accessToken, id);
+      setComments((prev) => prev.filter((x) => Number(x.id) !== Number(id)));
+    } catch (e) {
+      setCommentHint((e as Error).message || "删除失败");
     }
   };
 
@@ -272,8 +366,8 @@ export function TermDetail() {
         variant="upgrade"
         onRequestLogin={() => setUpgradeOpen(false)}
       />
-      <div className="min-h-screen py-12 bg-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="figma-page py-12 bg-background">
+        <div className="figma-container max-w-4xl">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -565,6 +659,48 @@ export function TermDetail() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
           >
+            <Card className="rounded-3xl border-border p-6 mb-6 bg-white">
+              <div className="flex items-center gap-2 mb-3">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-semibold text-foreground">词条讨论区</h2>
+              </div>
+              <div className="space-y-3 mb-4">
+                <textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="欢迎补充你的理解、提问或案例..."
+                  className="w-full min-h-24 rounded-2xl border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <div className="flex justify-end">
+                  <Button type="button" className="rounded-full" onClick={() => void postComment()}>
+                    发布评论
+                  </Button>
+                </div>
+                {commentHint ? <p className="text-xs text-muted-foreground">{commentHint}</p> : null}
+              </div>
+              <div className="space-y-3">
+                {comments.map((c) => (
+                  <div key={c.id} className="rounded-2xl border border-border p-3">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{String(c.content || "")}</p>
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{c.created_at ? new Date(c.created_at).toLocaleString() : "-"}</span>
+                      {accessToken && String(c.user_id || "") === String(userId || "") ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 text-destructive hover:underline"
+                          onClick={() => void removeComment(Number(c.id))}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          删除
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+                {0 === comments.length ? <p className="text-sm text-muted-foreground">还没有评论，来抢沙发吧。</p> : null}
+              </div>
+            </Card>
+
             {relatedToolLinksForDisplay.length > 0 ? (
               <Card className="rounded-3xl border-border p-6 mb-6 bg-white">
                 <h2 className="text-xl font-semibold text-foreground mb-3">相关工具</h2>

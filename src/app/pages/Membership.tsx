@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import { trackEventSafe } from "@/lib/telemetry";
 
 type PayChannel = "mock" | "alipay_pc" | "wechat_native";
 
@@ -58,6 +59,11 @@ export function Membership() {
           }
           const row = await apiClient.getPaymentOrder(token, orderId);
           if (row.status === "paid") {
+            void trackEventSafe({
+              eventName: "checkout_success",
+              userId,
+              payload: { payChannel: "wechat_native", result: "paid" },
+            });
             stopPoll();
             setWechatDialogOpen(false);
             await refreshMe();
@@ -73,7 +79,7 @@ export function Membership() {
         void tick();
       }, 2000);
     },
-    [refreshMe, navigate]
+    [refreshMe, navigate, userId]
   );
 
   useEffect(() => {
@@ -87,6 +93,14 @@ export function Membership() {
     }
   }, [location.search, refreshMe]);
 
+  useEffect(() => {
+    void trackEventSafe({
+      eventName: "membership_view",
+      userId,
+      payload: { entry: "membership_page" },
+    });
+  }, [userId]);
+
   const handleSubscribe = async (planName: string) => {
     if (!userId || !accessToken) {
       alert("请先登录后再开通会员");
@@ -99,6 +113,15 @@ export function Membership() {
 
     setProcessingPlan(planName);
     try {
+      void trackEventSafe({
+        eventName: "checkout_start",
+        userId,
+        payload: {
+          plan: normalizedPlan,
+          planTier,
+          payChannel,
+        },
+      });
       const result = await apiClient.createMembershipOrder(accessToken, {
         plan: normalizedPlan,
         planTier,
@@ -106,6 +129,11 @@ export function Membership() {
       });
 
       if (result.payMode === "mock") {
+        void trackEventSafe({
+          eventName: "checkout_success",
+          userId,
+          payload: { plan: normalizedPlan, planTier, payChannel: "mock" },
+        });
         alert(`已模拟开通会员，订单号：${String(result.orderId)}`);
         await refreshMe();
         return;
@@ -228,8 +256,8 @@ export function Membership() {
   ];
 
   return (
-    <div className="min-h-screen py-12 bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12">
+      <div className="figma-container">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

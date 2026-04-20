@@ -77,9 +77,9 @@ export function SupportTickets() {
   };
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
+    <div className="figma-page py-12 bg-secondary/30">
       <PageMeta title="我的工单" description="提交问题、查看处理状态，与邮件客服互为补充。" />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div className="figma-container max-w-4xl space-y-8">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-2">
             <LifeBuoy className="w-8 h-8 text-primary" />

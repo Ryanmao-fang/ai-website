@@ -34,9 +34,9 @@ const rows = [
 /** 会员工具箱：把文案权益落到可点击路径，降低「宣传夸大」风险 */
 export function MembershipBenefits() {
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
+    <div className="figma-page py-12 bg-secondary/30">
       <PageMeta title="权益落地索引" description="会员权益对应的站内功能入口一览。" />
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="figma-container max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl font-semibold text-foreground mb-2">权益如何兑现</h1>
           <p className="text-sm text-muted-foreground">

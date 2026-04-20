@@ -54,8 +54,8 @@ export function Orders() {
   const fmtFen = (fen: number) => (fen / 100).toFixed(2);
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
           <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">订单记录</h1>
           <p className="text-muted-foreground">最近 50 条支付订单（金额单位：人民币元）</p>

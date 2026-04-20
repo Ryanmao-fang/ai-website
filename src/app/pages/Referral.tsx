@@ -12,9 +12,9 @@ export function Referral() {
   const code = userId ? `INV-${String(userId).slice(0, 8).toUpperCase()}` : "";
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
+    <div className="figma-page py-12 bg-secondary/30">
       <PageMeta title="邀请好友" description="邀请与活动统计能力建设中，可先保存您的展示用邀请码。" />
-      <div className="max-w-xl mx-auto px-4">
+      <div className="figma-container max-w-xl">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-3xl font-semibold text-foreground mb-2">邀请与渠道</h1>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">

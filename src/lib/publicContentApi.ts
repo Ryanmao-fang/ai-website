@@ -38,6 +38,19 @@ export type CmsToolPublic = {
   content_version: string;
 };
 
+export type CmsTemplatePublic = {
+  id: number;
+  title: string;
+  scenario: string;
+  category: string;
+  tags: string[];
+  min_tier: string;
+  content_markdown?: string;
+  content_json?: any;
+  updated_at: string;
+  content_version: string;
+};
+
 export const publicContentApi = {
   listTerms: async (): Promise<CmsTermPublic[]> => {
     const payload = await getJson("/api/public/terms");
@@ -63,9 +76,9 @@ export const publicContentApi = {
       return null;
     }
   },
-  listTemplates: async (): Promise<any[]> => {
+  listTemplates: async (): Promise<CmsTemplatePublic[]> => {
     const payload = await getJson("/api/public/templates");
-    return ((payload as any)?.items || []) as any[];
+    return ((payload as any)?.items || []) as CmsTemplatePublic[];
   },
   listLearningPaths: async (): Promise<any[]> => {
     const payload = await getJson("/api/public/learning-paths");

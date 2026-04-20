@@ -159,6 +159,8 @@ export const adminApi = {
     ),
 
   opsOverview: (token: string) => adminRequest("/api/admin/ops/overview", token, { method: "GET" }),
+  opsGrowthOverview: (token: string) =>
+    adminRequest("/api/admin/ops/growth-overview", token, { method: "GET" }),
 
   opsAuditLogs: (token: string, limit?: number) => {
     const q = limit ? `?limit=${limit}` : "";
@@ -167,6 +169,25 @@ export const adminApi = {
 
   opsRunScheduleOnce: (token: string) =>
     adminRequest("/api/admin/ops/schedule/run-once", token, { method: "POST", body: "{}" }),
+
+  opsTaskRuns: (token: string, limit?: number) => {
+    const q = limit ? `?limit=${limit}` : "";
+    return adminRequest(`/api/admin/ops/automation/task-runs${q}`, token, { method: "GET" });
+  },
+
+  opsTriggerTask: (token: string, taskKey: string) =>
+    adminRequest(`/api/admin/ops/automation/task-runs/${encodeURIComponent(taskKey)}/trigger`, token, {
+      method: "POST",
+      body: "{}",
+    }),
+
+  opsConfigs: (token: string) => adminRequest("/api/admin/ops/automation/configs", token, { method: "GET" }),
+
+  updateOpsConfig: (token: string, configKey: string, valueJson: unknown) =>
+    adminRequest(`/api/admin/ops/automation/configs/${encodeURIComponent(configKey)}`, token, {
+      method: "PUT",
+      body: JSON.stringify({ valueJson }),
+    }),
 
   termQuality: (token: string, id: string) =>
     adminRequest(`/api/admin/terms/${encodeURIComponent(id)}/quality`, token, { method: "GET" }),

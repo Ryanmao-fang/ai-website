@@ -7,8 +7,8 @@ import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { apiClient } from "@/lib/api";
 import { Button } from "../components/ui/button";
-import { getTermById } from "@/content/termsCatalog";
-import { getToolById } from "@/content/toolsCatalog";
+import { getTermById, getTermBySlug } from "@/content/termsCatalog";
+import { getToolById, getToolBySlug } from "@/content/toolsCatalog";
 import { getTemplateById } from "@/content/templatesCatalog";
 
 type FavRow = {
@@ -20,12 +20,26 @@ type FavRow = {
 
 function resolveTitle(type: string, id: string): { title: string; category: string } {
   if ("term" === type) {
-    const t = getTermById(id);
-    return { title: t?.name || `名词 #${id}`, category: t?.category || "名词" };
+    if (/^\d+$/.test(id)) {
+      const t = getTermById(id);
+      return { title: t?.name || `名词 #${id}`, category: t?.category || "名词" };
+    }
+    const bySlug = getTermBySlug(id);
+    if (bySlug) {
+      return { title: bySlug.name, category: bySlug.category };
+    }
+    return { title: id, category: "名词" };
   }
   if ("tool" === type) {
-    const t = getToolById(id);
-    return { title: t?.name || `工具 #${id}`, category: t?.category || "工具" };
+    if (/^\d+$/.test(id)) {
+      const t = getToolById(id);
+      return { title: t?.name || `工具 #${id}`, category: t?.category || "工具" };
+    }
+    const bySlug = getToolBySlug(id);
+    if (bySlug) {
+      return { title: bySlug.name, category: bySlug.category };
+    }
+    return { title: id, category: "工具" };
   }
   const n = Number(id);
   const tpl = getTemplateById(Number.isNaN(n) ? -1 : n);
@@ -67,8 +81,8 @@ export function Favorites() {
   }, [accessToken]);
 
   return (
-    <div className="min-h-screen py-12 bg-secondary/30">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="figma-page py-12 bg-secondary/30">
+      <div className="figma-container max-w-4xl">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
             <Heart className="w-4 h-4" />
@@ -120,12 +134,16 @@ export function Favorites() {
               const meta = resolveTitle(row.target_type, row.target_id);
               const href = (() => {
                 if ("term" === row.target_type) {
-                  const t = getTermById(row.target_id);
-                  return t ? `/term/${t.slug}` : `/terms/${row.target_id}`;
+                  const t = /^\d+$/.test(row.target_id)
+                    ? getTermById(row.target_id)
+                    : getTermBySlug(row.target_id);
+                  return t ? `/term/${t.slug}` : `/term/${encodeURIComponent(row.target_id)}`;
                 }
                 if ("tool" === row.target_type) {
-                  const t = getToolById(row.target_id);
-                  return t ? `/tool/${t.slug}` : `/tools/${row.target_id}`;
+                  const t = /^\d+$/.test(row.target_id)
+                    ? getToolById(row.target_id)
+                    : getToolBySlug(row.target_id);
+                  return t ? `/tool/${t.slug}` : `/tool/${encodeURIComponent(row.target_id)}`;
                 }
                 return "/templates";
               })();

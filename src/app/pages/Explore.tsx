@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Sparkles, BookOpen, Wrench } from "lucide-react";
 import { Card } from "../components/ui/card";
@@ -7,21 +8,89 @@ import { Button } from "../components/ui/button";
 import { termsCatalog } from "@/content/termsCatalog";
 import { toolsCatalog } from "@/content/toolsCatalog";
 import { PageMeta } from "../components/PageMeta";
+import { publicContentApi } from "@/lib/publicContentApi";
 
 /** 未登录用户可浏览的内容导览（与详情页登录门槛配合） */
 export function Explore() {
-  const showTerms = termsCatalog.slice(0, 6);
-  const showTools = toolsCatalog.slice(0, 6);
+  const [cmsTerms, setCmsTerms] = useState<{ slug: string; name: string; description: string; category: string }[] | null>(null);
+  const [cmsTools, setCmsTools] = useState<{ slug: string; name: string; description: string; category: string; icon: string; suitableFor?: string }[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [terms, tools] = await Promise.all([
+          publicContentApi.listTerms(),
+          publicContentApi.listTools(),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        if (terms.length > 0) {
+          setCmsTerms(terms.slice(0, 6).map((t) => ({
+            slug: t.slug,
+            name: t.name,
+            description: t.description,
+            category: t.category,
+          })));
+        }
+        if (tools.length > 0) {
+          setCmsTools(tools.slice(0, 6).map((t) => ({
+            slug: t.slug,
+            name: t.name,
+            description: t.description,
+            category: t.category,
+            icon: t.icon || "🧰",
+            suitableFor: t.suitable_for,
+          })));
+        }
+      } catch {
+        if (!cancelled) {
+          setCmsTerms(null);
+          setCmsTools(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showTerms = useMemo(() => {
+    if (cmsTerms && cmsTerms.length > 0) {
+      return cmsTerms;
+    }
+    return termsCatalog.slice(0, 6).map((t) => ({
+      slug: t.slug,
+      name: t.name,
+      description: t.description,
+      category: t.category,
+    }));
+  }, [cmsTerms]);
+
+  const showTools = useMemo(() => {
+    if (cmsTools && cmsTools.length > 0) {
+      return cmsTools;
+    }
+    return toolsCatalog.slice(0, 6).map((t) => ({
+      slug: t.slug,
+      name: t.name,
+      description: t.description,
+      category: t.category,
+      icon: t.icon,
+      suitableFor: t.suitableFor,
+    }));
+  }, [cmsTools]);
 
   return (
-    <div className="min-h-screen">
+    <div className="figma-page">
       <PageMeta
         title="内容导览"
         description="先睹为快：AI 名词与工具简介，登录后查看全文与收藏。"
       />
-      <section className="relative overflow-hidden py-16 md:py-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+      <section className="figma-hero">
+        <div className="figma-hero-bg" />
+        <div className="figma-container relative text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
               <Sparkles className="w-4 h-4" />
@@ -45,14 +114,14 @@ export function Explore() {
       </section>
 
       <section className="pb-20 bg-white space-y-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="figma-container">
           <div className="flex items-center gap-2 mb-6">
             <BookOpen className="w-6 h-6 text-primary" />
             <h2 className="text-2xl font-semibold text-foreground">AI 名词预览</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {showTerms.map((t, i) => (
-              <motion.div key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+              <motion.div key={t.slug} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <Card className="rounded-3xl border-border p-6 h-full">
                   <Badge className="rounded-full bg-primary/10 text-primary border-0 mb-2">{t.category}</Badge>
                   <h3 className="font-semibold text-foreground mb-2">{t.name}</h3>
@@ -66,14 +135,14 @@ export function Explore() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="figma-container">
           <div className="flex items-center gap-2 mb-6">
             <Wrench className="w-6 h-6 text-primary" />
             <h2 className="text-2xl font-semibold text-foreground">工具库预览</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {showTools.map((t, i) => (
-              <motion.div key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+              <motion.div key={t.slug} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <Card className="rounded-3xl border-border p-6 h-full flex gap-4">
                   <div className="text-4xl shrink-0">{t.icon}</div>
                   <div>

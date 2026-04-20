@@ -52,9 +52,9 @@ export function ProBooking() {
         variant="upgrade"
         onRequestLogin={() => setUpgradeOpen(false)}
       />
-      <div className="min-h-screen py-12 bg-secondary/30">
+      <div className="figma-page py-12 bg-secondary/30">
         <PageMeta title="专业辅导预约" description="专业会员可提交 1 对 1 辅导需求，由客服排期。" />
-        <div className="max-w-xl mx-auto px-4">
+        <div className="figma-container max-w-xl">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
             <h1 className="text-3xl font-semibold text-foreground mb-2">1 对 1 辅导预约</h1>
             <p className="text-sm text-muted-foreground leading-relaxed">

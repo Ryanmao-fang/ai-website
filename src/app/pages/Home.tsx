@@ -12,9 +12,11 @@ import { termsCatalog } from "@/content/termsCatalog";
 import { toolsCatalog } from "@/content/toolsCatalog";
 import { homeLearningPathPreviewCounts } from "@/content/learningPathConfig";
 import { featuredTermIds, featuredToolIds } from "@/content/featured";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageMeta } from "../components/PageMeta";
 import { siteConfig } from "@/lib/siteConfig";
+import { publicContentApi } from "@/lib/publicContentApi";
+import { trackEventSafe } from "@/lib/telemetry";
 
 const featuredTerms = featuredTermIds
   .map((id) => termsCatalog.find((t) => t.id === id))
@@ -29,8 +31,85 @@ export function Home() {
   const { openLogin } = useLoginDialog();
   const navigate = useNavigate();
   const [heroQuery, setHeroQuery] = useState("");
+  const [cmsTerms, setCmsTerms] = useState<{ slug: string; name: string; description: string; category: string }[] | null>(null);
+  const [cmsTools, setCmsTools] = useState<{ slug: string; name: string; description: string; category: string; icon: string; tags: string[] }[] | null>(null);
 
-  const termCard = (term: (typeof featuredTerms)[0], index: number) => (
+  useEffect(() => {
+    void trackEventSafe({ eventName: "home_view", userId });
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [terms, tools] = await Promise.all([
+          publicContentApi.listTerms(),
+          publicContentApi.listTools(),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        if (terms.length > 0) {
+          setCmsTerms(
+            terms.slice(0, 6).map((t) => ({
+              slug: t.slug,
+              name: t.name,
+              description: t.description,
+              category: t.category,
+            }))
+          );
+        }
+        if (tools.length > 0) {
+          setCmsTools(
+            tools.slice(0, 8).map((t) => ({
+              slug: t.slug,
+              name: t.name,
+              description: t.description,
+              category: t.category,
+              icon: t.icon || "🧰",
+              tags: t.tags || [],
+            }))
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setCmsTerms(null);
+          setCmsTools(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleTerms = useMemo(() => {
+    if (cmsTerms && cmsTerms.length > 0) {
+      return cmsTerms;
+    }
+    return featuredTerms.map((term) => ({
+      slug: term.slug,
+      name: term.name,
+      description: term.description,
+      category: term.category,
+    }));
+  }, [cmsTerms]);
+
+  const visibleTools = useMemo(() => {
+    if (cmsTools && cmsTools.length > 0) {
+      return cmsTools;
+    }
+    return featuredTools.map((tool) => ({
+      slug: tool.slug,
+      name: tool.name,
+      description: tool.description,
+      category: tool.category,
+      icon: tool.icon,
+      tags: tool.tags,
+    }));
+  }, [cmsTools]);
+
+  const termCard = (term: { slug: string; name: string; description: string; category: string }, index: number) => (
     <Card className="overflow-hidden rounded-3xl border-border hover:shadow-lg transition-all group cursor-pointer">
       <div className="relative h-48 overflow-hidden">
         <ImageWithFallback
@@ -52,7 +131,7 @@ export function Home() {
     </Card>
   );
 
-  const toolCard = (tool: (typeof featuredTools)[0], index: number) => (
+  const toolCard = (tool: { slug: string; name: string; description: string; category: string; icon: string; tags: string[] }, index: number) => (
     <Card className="rounded-3xl border-border hover:shadow-lg transition-all group cursor-pointer p-6">
       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
         {tool.icon}
@@ -78,6 +157,7 @@ export function Home() {
   const goSearchOrExplore = () => {
     const q = heroQuery.trim();
     if (q) {
+      void trackEventSafe({ eventName: "search_submit", userId, payload: { query: q.slice(0, 80), entry: "home_hero" } });
       navigate(`/search?q=${encodeURIComponent(q)}`);
       return;
     }
@@ -85,11 +165,11 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="figma-page">
       <PageMeta title="首页" description={`${siteConfig.tagline}——AI 名词、工具与学习路线。`} />
-      <section className="relative overflow-hidden py-20 md:py-32">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <section className="figma-hero py-20 md:py-32">
+        <div className="figma-hero-bg" />
+        <div className="figma-container relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -140,7 +220,7 @@ export function Home() {
       </section>
 
       <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="figma-container">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-3xl font-semibold text-foreground mb-2">热门名词</h2>
@@ -154,7 +234,7 @@ export function Home() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredTerms.map((term, index) => (
+            {visibleTerms.map((term, index) => (
               <motion.div
                 key={term.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -169,7 +249,7 @@ export function Home() {
       </section>
 
       <section className="py-16 bg-secondary/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="figma-container">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-3xl font-semibold text-foreground mb-2">精选工具</h2>
@@ -183,7 +263,7 @@ export function Home() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredTools.map((tool, index) => (
+            {visibleTools.map((tool, index) => (
               <motion.div
                 key={tool.id}
                 initial={{ opacity: 0, y: 20 }}

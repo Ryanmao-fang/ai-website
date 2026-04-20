@@ -27,10 +27,10 @@ export function Feedback() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="figma-page">
       <section className="relative overflow-hidden py-16 md:py-20">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+        <div className="figma-container relative text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-3xl md:text-5xl font-semibold text-foreground mb-4">意见反馈</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -41,7 +41,7 @@ export function Feedback() {
       </section>
 
       <section className="pb-20 bg-white">
-        <div className="max-w-xl mx-auto px-4">
+        <div className="figma-container max-w-xl">
           <Card className="rounded-3xl border-border p-8 space-y-6">
             <div className="space-y-2">
               <Label htmlFor="fb-subject">主题（可选）</Label>

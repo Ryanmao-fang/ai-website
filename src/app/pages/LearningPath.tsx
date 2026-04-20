@@ -204,8 +204,8 @@ export function LearningPath() {
         variant="upgrade"
         onRequestLogin={() => setUpgradeOpen(false)}
       />
-      <div className="min-h-screen py-12 bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="figma-page py-12 bg-background">
+        <div className="figma-container max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

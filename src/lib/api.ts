@@ -95,4 +95,47 @@ export const apiClient = {
     request(`/api/tool-ratings/summary/${encodeURIComponent(toolId)}`, { method: "GET" }),
   getMyToolRating: (token: string, toolId: string) =>
     request(`/api/tool-ratings/mine/${encodeURIComponent(toolId)}`, { method: "GET" }, token),
+
+  listComments: (targetType: string, targetId: string) =>
+    request(`/api/community/comments/${encodeURIComponent(targetType)}/${encodeURIComponent(targetId)}`, {
+      method: "GET",
+    }),
+  postComment: (token: string, body: { targetType: string; targetId: string; content: string }) =>
+    request("/api/community/comments", { method: "POST", body: JSON.stringify(body) }, token),
+  deleteComment: (token: string, id: number) =>
+    request(`/api/community/comments/${id}`, { method: "DELETE" }, token),
+
+  listMyMessages: (token: string) => request("/api/community/messages/mine", { method: "GET" }, token),
+  markMessageRead: (token: string, id: number) =>
+    request("/api/community/messages/mark-read", { method: "POST", body: JSON.stringify({ id }) }, token),
+
+  submitCustomTemplateRequest: (
+    token: string,
+    body: { title: string; summary: string; contact?: string; scenario?: string }
+  ) => request("/api/templates/request", { method: "POST", body: JSON.stringify(body) }, token),
+
+  listMyTemplateRequests: (token: string) => request("/api/templates/mine", { method: "GET" }, token),
+
+  submitTemplateFeedback: (
+    token: string,
+    body: {
+      templateId?: number | null;
+      templateTitle?: string;
+      usedModel?: string;
+      score: number;
+      effective: boolean;
+      outcomeSummary: string;
+      issueTags?: string[];
+    }
+  ) => request("/api/templates/feedback", { method: "POST", body: JSON.stringify(body) }, token),
+
+  trackEvent: (body: {
+    eventName: string;
+    sessionId: string;
+    pagePath?: string;
+    referrer?: string;
+    source?: string;
+    userId?: string | null;
+    payload?: Record<string, string | number | boolean>;
+  }) => request("/api/analytics/track", { method: "POST", body: JSON.stringify(body) }),
 };

@@ -10,7 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { apiClient } from "@/lib/api";
 import { tierMeetsMin } from "@/lib/membershipTier";
 import { AccessNoticeDialog } from "../components/AccessNoticeDialog";
-import { listTermsSummary } from "@/content/termsCatalog";
+import { getTermById, listTermsSummary } from "@/content/termsCatalog";
 import { publicContentApi } from "@/lib/publicContentApi";
 
 export function TermsList() {
@@ -20,7 +20,7 @@ export function TermsList() {
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [favoriteIdSet, setFavoriteIdSet] = useState<Set<string>>(new Set());
   const [cmsTerms, setCmsTerms] = useState<
-    { id: number; slug: string; name: string; description: string; category: string; likes?: number }[] | null
+    { slug: string; name: string; description: string; category: string; likes?: number }[] | null
   >(null);
 
   const categories = ["全部", "基础概念", "技术原理", "应用场景", "实用技能"];
@@ -36,8 +36,7 @@ export function TermsList() {
         }
         if (items && items.length > 0) {
           setCmsTerms(
-            items.map((t, idx) => ({
-              id: 100000 + idx,
+            items.map((t) => ({
               slug: t.slug,
               name: t.name,
               description: t.description,
@@ -79,6 +78,12 @@ export function TermsList() {
         for (const row of rows) {
           if ("term" === row.target_type) {
             next.add(row.target_id);
+            if (/^\d+$/.test(row.target_id)) {
+              const t = getTermById(row.target_id);
+              if (t) {
+                next.add(t.slug);
+              }
+            }
           }
         }
         if (!cancelled) {
@@ -101,7 +106,17 @@ export function TermsList() {
     return matchesSearch && matchesCategory;
   });
 
-  const toggleFavorite = async (termId: number) => {
+  const isTermFavorited = (term: { slug: string; id?: number }) => {
+    if (favoriteIdSet.has(term.slug)) {
+      return true;
+    }
+    if (term.id != null && favoriteIdSet.has(String(term.id))) {
+      return true;
+    }
+    return false;
+  };
+
+  const toggleFavorite = async (termSlug: string) => {
     if (!accessToken) {
       return;
     }
@@ -109,15 +124,18 @@ export function TermsList() {
       setUpgradeOpen(true);
       return;
     }
+    const key = termSlug.trim();
+    if (!key) {
+      return;
+    }
     try {
-      await apiClient.toggleFavorite(accessToken, { targetType: "term", targetId: String(termId) });
-      const id = String(termId);
+      await apiClient.toggleFavorite(accessToken, { targetType: "term", targetId: key });
       setFavoriteIdSet((prev) => {
         const copy = new Set(prev);
-        if (copy.has(id)) {
-          copy.delete(id);
+        if (copy.has(key)) {
+          copy.delete(key);
         } else {
-          copy.add(id);
+          copy.add(key);
         }
         return copy;
       });
@@ -134,8 +152,8 @@ export function TermsList() {
         variant="upgrade"
         onRequestLogin={() => setUpgradeOpen(false)}
       />
-      <div className="min-h-screen py-12 bg-secondary/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="figma-page py-12 bg-secondary/30">
+        <div className="figma-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -200,12 +218,16 @@ export function TermsList() {
                       type="button"
                       className="text-muted-foreground hover:text-destructive transition-colors"
                       aria-label="收藏"
-                      onClick={() => toggleFavorite(Number(term.id || 0))}
-                      disabled={Number(term.id || 0) <= 0 || Number(term.id || 0) >= 100000}
+                      onClick={() => void toggleFavorite(term.slug)}
                     >
                       <Heart
                         className={`w-5 h-5 ${
-                          favoriteIdSet.has(String(term.id)) ? "fill-destructive text-destructive" : ""
+                          isTermFavorited({
+                            slug: term.slug,
+                            id: "id" in term ? (term as { id: number }).id : undefined,
+                          })
+                            ? "fill-destructive text-destructive"
+                            : ""
                         }`}
                       />
                     </button>

@@ -119,8 +119,8 @@ function AdminGateInner() {
 
   if (!userId) {
     return (
-      <div className="min-h-screen bg-secondary/30 py-12">
-        <div className="max-w-xl mx-auto px-4">
+      <div className="figma-page bg-secondary/30 py-12">
+        <div className="figma-container max-w-xl">
           <Card className="rounded-3xl border-border p-8 bg-white">
             <h1 className="text-xl font-semibold text-foreground mb-2">管理台</h1>
             <p className="text-sm text-muted-foreground mb-6">进入管理台前需要先登录你的站点账号。</p>
@@ -135,8 +135,8 @@ function AdminGateInner() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-secondary/30 py-12">
-        <div className="max-w-xl mx-auto px-4">
+      <div className="figma-page bg-secondary/30 py-12">
+        <div className="figma-container max-w-xl">
           <Card className="rounded-3xl border-border p-8 bg-white">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
@@ -205,9 +205,9 @@ function AdminGateInner() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="figma-page bg-background">
       <div className="border-b border-border bg-white/95 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
+        <div className="figma-container py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-lg font-semibold text-foreground">运营管理控制台</h1>
             <p className="text-xs text-muted-foreground">
@@ -226,7 +226,7 @@ function AdminGateInner() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+      <div className="figma-container py-6 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
         <Card className="rounded-3xl border-border p-4 bg-white h-fit lg:sticky lg:top-6">
           <p className="text-xs text-muted-foreground mb-3">运营导航</p>
           <div className="space-y-2">
