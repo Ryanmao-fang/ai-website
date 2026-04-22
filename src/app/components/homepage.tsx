@@ -156,7 +156,7 @@ export default function Homepage({ onNavigate }: HomepageProps) {
   return (
     <div className="bg-[#060B1A] pt-16">
       <section
-        className={`relative flex min-h-[460px] items-center justify-center overflow-hidden px-4 py-20 text-center text-white md:px-6 ${
+        className={`relative flex min-h-[520px] items-center justify-center overflow-hidden px-4 py-20 text-center text-white md:min-h-[620px] md:px-6 ${
           heroBgFailed ? "bg-gradient-to-br from-[#165DFF] via-[#0F4CD5] to-[#165DFF]" : ""
         }`}
       >
@@ -164,8 +164,8 @@ export default function Homepage({ onNavigate }: HomepageProps) {
           <img
             src={SITE_CONFIG.heroBackgroundImage}
             alt="Hero背景图"
-            className="absolute inset-0 h-full w-full object-contain"
-            style={{ transform: `translateY(${-parallaxY * 0.3}px)` }}
+            className="absolute inset-0 h-full w-full object-cover object-center"
+            style={{ transform: `translateY(${-parallaxY * 0.15}px) scale(1.03)` }}
             onError={() => setHeroBgFailed(true)}
           />
         )}
