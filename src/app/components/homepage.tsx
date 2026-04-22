@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { SITE_CONFIG } from "../../config/siteConfig";
 
 interface HomepageProps {
@@ -153,32 +153,19 @@ export default function Homepage({ onNavigate }: HomepageProps) {
     return () => observer.disconnect();
   }, []);
 
-  const heroBackgroundStyle = useMemo(
-    () =>
-      heroBgFailed
-        ? undefined
-        : {
-            backgroundImage: `url(${SITE_CONFIG.heroBackgroundImage})`,
-            backgroundPosition: `center ${-parallaxY}px`,
-            backgroundSize: "cover",
-            backgroundRepeat: "no-repeat",
-          },
-    [heroBgFailed, parallaxY]
-  );
-
   return (
     <div className="bg-[#060B1A] pt-16">
       <section
-        className={`relative overflow-hidden px-4 py-28 text-center text-white md:px-6 ${
+        className={`relative flex min-h-[460px] items-center justify-center overflow-hidden px-4 py-20 text-center text-white md:px-6 ${
           heroBgFailed ? "bg-gradient-to-br from-[#165DFF] via-[#0F4CD5] to-[#165DFF]" : ""
         }`}
-        style={heroBackgroundStyle}
       >
         {!heroBgFailed && (
           <img
             src={SITE_CONFIG.heroBackgroundImage}
             alt="Hero背景图"
-            className="hidden"
+            className="absolute inset-0 h-full w-full object-contain"
+            style={{ transform: `translateY(${-parallaxY * 0.3}px)` }}
             onError={() => setHeroBgFailed(true)}
           />
         )}

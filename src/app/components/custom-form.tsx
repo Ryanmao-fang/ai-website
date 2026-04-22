@@ -197,21 +197,29 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await response.json().catch(() => ({} as Record<string, unknown>));
       if (!response.ok) {
-        setSubmitMessage("需求提交失败，请稍后重试。");
-      } else if (true === result.delivered) {
+        let failMessage = typeof result.error === "string" ? result.error : "需求提交失败，请稍后重试。";
+        if (429 === response.status && typeof result.retryAfterMs === "number") {
+          const minutes = Math.max(1, Math.ceil(Number(result.retryAfterMs) / 60000));
+          failMessage = `${failMessage} 约 ${minutes} 分钟后可再次提交。`;
+        }
+        setSubmitMessage(failMessage);
+        return;
+      }
+
+      if (true === result.delivered) {
         setSubmitMessage("需求已成功提交，信息已发送至管理员后台，请添加微信对接精准报价。");
       } else {
         setSubmitMessage("需求已提交留存，但邮件发送失败，请稍后重试或直接微信联系。");
       }
+      setShowResult(true);
+      setShowSubmitPopup(true);
+      window.setTimeout(() => setShowSubmitPopup(false), 3500);
     } catch (_error) {
       setSubmitMessage("网络连接异常，需求已留存，请直接微信联系。");
     } finally {
-      setShowResult(true);
-      setShowSubmitPopup(true);
       setIsSubmitting(false);
-      window.setTimeout(() => setShowSubmitPopup(false), 3500);
     }
   };
 
@@ -227,8 +235,8 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
       <section className="min-h-screen bg-gradient-to-br from-[#060B1A] via-[#0B1228] to-[#101A35] px-4 pb-16 pt-28 md:px-6">
         <div className="mx-auto max-w-5xl">
           {showSubmitPopup && (
-            <div className="fixed right-4 top-24 z-50 rounded-lg bg-[#165DFF] px-4 py-3 text-sm text-white shadow-[0_6px_20px_rgba(22,93,255,0.2)]">
-              需求已成功提交，信息已发送至管理员后台，请添加微信对接精准报价。
+              <div className="fixed right-4 top-24 z-50 max-w-sm rounded-lg bg-[#165DFF] px-4 py-3 text-sm text-white shadow-[0_6px_20px_rgba(22,93,255,0.2)]">
+              {submitMessage}
             </div>
           )}
           <div className="rounded-2xl border border-[#22345F] bg-[#101A35]/95 p-8 shadow-[0_10px_30px_rgba(22,93,255,0.2)]">
@@ -351,7 +359,7 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
                     onClick={() => setFormData({ ...formData, complexity: item.id })}
                     className={`w-full rounded-lg border p-4 text-left transition-all duration-300 ${
                       item.id === formData.complexity
-                        ? "border-[#165DFF] bg-gradient-to-r from-[#E8F3FF] to-white shadow-[0_2px_12px_rgba(22,93,255,0.06)]"
+                        ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] shadow-[0_2px_12px_rgba(22,93,255,0.18)]"
                         : "border-[#22345F] bg-[#0B1228] hover:-translate-y-0.5 hover:border-[#165DFF] hover:shadow-[0_6px_20px_rgba(22,93,255,0.2)]"
                     }`}
                   >
@@ -369,7 +377,7 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
                     onClick={() => setFormData({ ...formData, timeline: item.id })}
                     className={`w-full rounded-lg border p-4 text-left transition-all duration-300 ${
                       item.id === formData.timeline
-                        ? "border-[#165DFF] bg-gradient-to-r from-[#E8F3FF] to-white shadow-[0_2px_12px_rgba(22,93,255,0.06)]"
+                        ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] shadow-[0_2px_12px_rgba(22,93,255,0.18)]"
                         : "border-[#22345F] bg-[#0B1228] hover:-translate-y-0.5 hover:border-[#165DFF] hover:shadow-[0_6px_20px_rgba(22,93,255,0.2)]"
                     }`}
                   >
@@ -409,7 +417,7 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
                       onClick={() => setFormData({ ...formData, contactType: "email" })}
                       className={`rounded-lg border p-3 text-sm ${
                         "email" === formData.contactType
-                          ? "border-[#165DFF] bg-gradient-to-r from-[#E8F3FF] to-white text-[#165DFF]"
+                          ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] text-[#7EA5FF]"
                           : "border-[#22345F] bg-[#101A35] text-[#AFC0E8]"
                       }`}
                     >
@@ -465,6 +473,11 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
                 </button>
               )}
             </div>
+            {!!submitMessage && (
+              <p className="mt-4 text-sm text-[#7EA5FF]">
+                {submitMessage}
+              </p>
+            )}
           </article>
 
           <aside className="rounded-2xl border border-[#22345F] bg-[#101A35] p-5 shadow-[0_2px_12px_rgba(22,93,255,0.15)] lg:sticky lg:top-24 lg:h-fit">
