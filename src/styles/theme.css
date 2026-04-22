@@ -2,20 +2,20 @@
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: #333333;
-  --card: #ffffff;
-  --card-foreground: #333333;
+  --background: #060b1a;
+  --foreground: #eaf1ff;
+  --card: #101a35;
+  --card-foreground: #eaf1ff;
   --primary: #165dff;
   --primary-foreground: #ffffff;
-  --secondary: #f5f7fa;
-  --secondary-foreground: #666666;
-  --muted: #f5f7fa;
-  --muted-foreground: #666666;
-  --accent: #e8f3ff;
-  --accent-foreground: #165dff;
-  --border: #e0e6ed;
-  --input: #e0e6ed;
+  --secondary: #0b1228;
+  --secondary-foreground: #b9c8eb;
+  --muted: #0d1630;
+  --muted-foreground: #9cb0dc;
+  --accent: #142449;
+  --accent-foreground: #7ea5ff;
+  --border: #22345f;
+  --input: #22345f;
   --ring: #165dff;
   --radius: 0.5rem;
 }
