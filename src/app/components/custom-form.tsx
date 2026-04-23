@@ -1,505 +1,331 @@
-import { useMemo, useState } from "react";
-import { clampPrice, SITE_CONFIG } from "../../config/siteConfig";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SITE_CONFIG } from "../../config/siteConfig";
 
 interface CustomFormProps {
   onNavigate: (page: "home" | "custom") => void;
 }
 
-type RequirementType = "workflow" | "agent" | "tool" | "";
-type ScenarioType = "personal" | "side-hustle" | "enterprise" | "";
-type ComplexityType = "simple" | "standard" | "full" | "";
-type TimelineType = "3days" | "7days" | "15days" | "";
-type ContactType = "wechat" | "email" | "";
-
-interface FormState {
-  requirementType: RequirementType;
-  scenario: ScenarioType;
-  complexity: ComplexityType;
-  timeline: TimelineType;
-  note: string;
-  contactType: ContactType;
-  contactValue: string;
+interface QuoteBreakdownItem {
+  name: string;
+  detail: string;
 }
 
-interface PriceRange {
+interface QuoteData {
   min: number;
   max: number;
+  currency: string;
+  deliveryDays: string;
+  breakdown: QuoteBreakdownItem[];
 }
 
-const requirementOptions: Array<{ id: RequirementType; label: string; desc: string; base: PriceRange }> = [
-  {
-    id: "workflow",
-    label: "AI工作流定制",
-    desc: "精准拆解业务场景，封装自动化工作流，提升高频任务效率。",
-    base: {
-      min: SITE_CONFIG.pricing.baseByType.workflow.min,
-      max: SITE_CONFIG.pricing.baseByType.workflow.max,
-    },
-  },
-  {
-    id: "agent",
-    label: "AI智能体定制",
-    desc: "定制多轮任务执行智能体，适配助手、客服、业务协同场景。",
-    base: {
-      min: SITE_CONFIG.pricing.baseByType.agent.min,
-      max: SITE_CONFIG.pricing.baseByType.agent.max,
-    },
-  },
-  {
-    id: "tool",
-    label: "AI工具定制",
-    desc: "开发轻量化专属工具，聚焦单一核心需求，支持快速部署。",
-    base: {
-      min: SITE_CONFIG.pricing.baseByType.tool.min,
-      max: SITE_CONFIG.pricing.baseByType.tool.max,
-    },
-  },
-];
-
-const scenarioOptions: Array<{ id: ScenarioType; label: string; multiplier: number }> = [
-  { id: "personal", label: "个人自用", multiplier: SITE_CONFIG.pricing.scenarioMultiplier.personal },
-  { id: "side-hustle", label: "副业变现", multiplier: SITE_CONFIG.pricing.scenarioMultiplier["side-hustle"] },
-  { id: "enterprise", label: "企业内部使用", multiplier: SITE_CONFIG.pricing.scenarioMultiplier.enterprise },
-];
-
-const complexityOptions: Array<{ id: ComplexityType; label: string; multiplier: number }> = [
-  { id: "simple", label: "简易版（基础功能，无需部署）", multiplier: SITE_CONFIG.pricing.complexityMultiplier.simple },
-  { id: "standard", label: "标准版（完整功能，无需部署）", multiplier: SITE_CONFIG.pricing.complexityMultiplier.standard },
-  { id: "full", label: "完整版（完整功能+网页部署+域名绑定）", multiplier: SITE_CONFIG.pricing.complexityMultiplier.full },
-];
-
-const timelineOptions: Array<{ id: TimelineType; label: string; multiplier: number }> = [
-  { id: "3days", label: "3个工作日内", multiplier: SITE_CONFIG.pricing.timelineMultiplier["3days"] },
-  { id: "7days", label: "7个工作日内", multiplier: SITE_CONFIG.pricing.timelineMultiplier["7days"] },
-  { id: "15days", label: "15个工作日内", multiplier: SITE_CONFIG.pricing.timelineMultiplier["15days"] },
-];
-
-const defaultFormState: FormState = {
-  requirementType: "",
-  scenario: "",
-  complexity: "",
-  timeline: "",
-  note: "",
-  contactType: "",
-  contactValue: "",
-};
-
-function sanitizeText(input: string): string {
-  return input.replace(/[<>]/g, "").trim();
+interface AgentResult {
+  summary: string;
+  solution: string[];
+  quotation: QuoteData | null;
+  wechatGuide: string;
+  conversationId: string;
 }
 
-function formatPrice(value: number): string {
-  return `¥${value.toLocaleString("zh-CN")}`;
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  at: string;
+  result?: AgentResult;
 }
 
-function calculatePriceRange(formData: FormState): PriceRange {
-  const selectedType = requirementOptions.find((item) => item.id === formData.requirementType);
-  if (!selectedType) {
-    return { min: 0, max: 0 };
+function formatPrice(value: number, currency = "CNY"): string {
+  try {
+    return new Intl.NumberFormat("zh-CN", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(value);
+  } catch (_error) {
+    return `¥${value.toLocaleString("zh-CN")}`;
   }
-  const scenarioMul = scenarioOptions.find((item) => item.id === formData.scenario)?.multiplier || 1;
-  const complexityMul = complexityOptions.find((item) => item.id === formData.complexity)?.multiplier || 1;
-  const timelineMul = timelineOptions.find((item) => item.id === formData.timeline)?.multiplier || 1;
-  const totalMul = scenarioMul * complexityMul * timelineMul;
-  return clampPrice(
-    Math.round(selectedType.base.min * totalMul),
-    Math.round(selectedType.base.max * totalMul)
-  );
 }
 
-function mapContactType(type: ContactType) {
-  if ("wechat" === type) {
-    return "微信";
-  }
-  if ("email" === type) {
-    return "邮箱";
-  }
-  return "未填写";
+function createSessionId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+function sanitizeInput(value: string): string {
+  return value.replace(/[<>]/g, "").trim().slice(0, 1200);
+}
+
+const starterPrompts = ["我想做企业内部知识库问答智能体", "我想做小红书内容生产工作流", "我想做销售线索自动跟进Agent"];
 
 export default function CustomForm({ onNavigate }: CustomFormProps) {
-  const [step, setStep] = useState<number>(1);
-  const [formData, setFormData] = useState<FormState>(defaultFormState);
-  const [showResult, setShowResult] = useState<boolean>(false);
-  const [submitMessage, setSubmitMessage] = useState<string>("");
-  const [showSubmitPopup, setShowSubmitPopup] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [input, setInput] = useState<string>("");
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [qrcodeFallback, setQrcodeFallback] = useState<boolean>(false);
+  const [conversationId, setConversationId] = useState<string>("");
+  const [sessionId] = useState<string>(() => createSessionId());
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content:
+        "你好，我是AI定制需求助手。你可以直接说目标、行业、用户规模、上线时间和预算范围，我会先帮你梳理需求，再生成方案和报价。",
+      at: new Date().toISOString(),
+    },
+  ]);
+  const messageContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const noteLength = formData.note.trim().length;
-  const hasValidContact = !!(formData.contactType && formData.contactValue.trim());
-  const hasValidNote = noteLength >= 5 && noteLength <= 500;
-  const priceRange = useMemo(() => calculatePriceRange(formData), [formData]);
+  useEffect(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+    }
+  }, [messages, isSending]);
 
-  const selectedSummary = useMemo(
-    () => [
-      {
-        label: "需求类型",
-        value: requirementOptions.find((item) => item.id === formData.requirementType)?.label || "未选择",
-      },
-      {
-        label: "应用场景",
-        value: scenarioOptions.find((item) => item.id === formData.scenario)?.label || "未选择",
-      },
-      {
-        label: "功能复杂度",
-        value: complexityOptions.find((item) => item.id === formData.complexity)?.label || "未选择",
-      },
-      {
-        label: "交付周期",
-        value: timelineOptions.find((item) => item.id === formData.timeline)?.label || "未选择",
-      },
-      {
-        label: "补充说明",
-        value: formData.note ? formData.note : "无",
-      },
-      {
-        label: "联系方式",
-        value: formData.contactValue ? `${mapContactType(formData.contactType)}：${formData.contactValue}` : "未填写",
-      },
-    ],
-    [formData]
-  );
+  const latestResult = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].result) {
+        return messages[index].result as AgentResult;
+      }
+    }
+    return null;
+  }, [messages]);
 
-  const canNext = () => {
-    if (1 === step) {
-      return "" !== formData.requirementType;
-    }
-    if (2 === step) {
-      return "" !== formData.scenario;
-    }
-    if (3 === step) {
-      return "" !== formData.complexity;
-    }
-    if (4 === step) {
-      return "" !== formData.timeline;
-    }
-    return hasValidContact && hasValidNote;
-  };
-
-  const submitDemand = async () => {
-    if (isSubmitting || !canNext()) {
+  const sendMessage = async (rawText?: string) => {
+    const candidate = typeof rawText === "string" ? rawText : input;
+    const cleanText = sanitizeInput(candidate);
+    if (!cleanText || isSending) {
       return;
     }
-    const payload = {
-      ...formData,
-      note: sanitizeText(formData.note),
-      contactValue: sanitizeText(formData.contactValue),
-      priceRange,
-      submittedAt: new Date().toISOString(),
+
+    setErrorMessage("");
+    setInput("");
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: cleanText,
+      at: new Date().toISOString(),
     };
-    setIsSubmitting(true);
-    setSubmitMessage("");
+    setMessages((prev) => [...prev, userMessage]);
+    setIsSending(true);
+
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-      const response = await fetch(`${apiBaseUrl}/api/leads/submit`, {
+      const response = await fetch(`${apiBaseUrl}/api/agent/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          message: cleanText,
+          conversationId,
+          sessionId,
+          history: messages.map((item) => ({ role: item.role, content: item.content })),
+        }),
       });
       const result = await response.json().catch(() => ({} as Record<string, unknown>));
-      if (!response.ok) {
-        let failMessage = typeof result.error === "string" ? result.error : "需求提交失败，请稍后重试。";
-        if (429 === response.status && typeof result.retryAfterMs === "number") {
-          const minutes = Math.max(1, Math.ceil(Number(result.retryAfterMs) / 60000));
-          failMessage = `${failMessage} 约 ${minutes} 分钟后可再次提交。`;
-        }
-        setSubmitMessage(failMessage);
+      if (!response.ok || true !== result.ok) {
+        const failReason = typeof result.error === "string" ? result.error : "Agent请求失败，请稍后重试。";
+        setErrorMessage(failReason);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "当前网络波动，暂时无法完成完整分析。你可以再发一次，我会继续基于已有内容给方案。",
+            at: new Date().toISOString(),
+          },
+        ]);
         return;
       }
 
-      if (true === result.delivered) {
-        setSubmitMessage("需求已成功提交，信息已发送至管理员后台，请添加微信对接精准报价。");
-      } else {
-        setSubmitMessage("需求已提交留存，但邮件发送失败，请稍后重试或直接微信联系。");
+      const nextConversationId = typeof result.conversationId === "string" ? result.conversationId : "";
+      if (nextConversationId) {
+        setConversationId(nextConversationId);
       }
-      setShowResult(true);
-      setShowSubmitPopup(true);
-      window.setTimeout(() => setShowSubmitPopup(false), 3500);
+
+      const agentResult: AgentResult = {
+        summary: typeof result.summary === "string" ? result.summary : "",
+        solution: Array.isArray(result.solution) ? result.solution.filter((item) => "string" === typeof item) : [],
+        quotation:
+          result.quotation && "object" === typeof result.quotation
+            ? {
+                min: Number(result.quotation.min || 0),
+                max: Number(result.quotation.max || 0),
+                currency: String(result.quotation.currency || "CNY"),
+                deliveryDays: String(result.quotation.deliveryDays || "待评估"),
+                breakdown: Array.isArray(result.quotation.breakdown)
+                  ? result.quotation.breakdown
+                      .map((row) => ({
+                        name: String(row?.name || ""),
+                        detail: String(row?.detail || ""),
+                      }))
+                      .filter((row) => row.name || row.detail)
+                  : [],
+              }
+            : null,
+        wechatGuide:
+          typeof result.wechatGuide === "string" && result.wechatGuide
+            ? result.wechatGuide
+            : "如果方案方向OK，添加微信进入下一轮细化。",
+        conversationId: nextConversationId,
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: typeof result.assistantMessage === "string" ? result.assistantMessage : "已生成需求分析结果。",
+          at: new Date().toISOString(),
+          result: agentResult,
+        },
+      ]);
     } catch (_error) {
-      setSubmitMessage("网络连接异常，需求已留存，请直接微信联系。");
+      setErrorMessage("网络连接异常，请稍后重试。");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "当前网络异常，暂时无法连接Agent。你可以直接添加微信，我会人工先帮你梳理需求。",
+          at: new Date().toISOString(),
+        },
+      ]);
     } finally {
-      setIsSubmitting(false);
+      setIsSending(false);
     }
   };
 
-  const resetForm = () => {
-    setStep(1);
-    setFormData(defaultFormState);
-    setShowResult(false);
-    setSubmitMessage("");
-  };
-
-  if (showResult) {
-    return (
-      <section className="min-h-screen bg-gradient-to-br from-[#060B1A] via-[#0B1228] to-[#101A35] px-4 pb-16 pt-28 md:px-6">
-        <div className="mx-auto max-w-5xl">
-          {showSubmitPopup && (
-              <div className="fixed right-4 top-24 z-50 max-w-sm rounded-lg bg-[#165DFF] px-4 py-3 text-sm text-white shadow-[0_6px_20px_rgba(22,93,255,0.2)]">
-              {submitMessage}
-            </div>
-          )}
-          <div className="rounded-2xl border border-[#22345F] bg-[#101A35]/95 p-8 shadow-[0_10px_30px_rgba(22,93,255,0.2)]">
-            <h1 className="text-center text-3xl font-bold text-[#EAF1FF]">您的定制需求报价已生成</h1>
-            <p className="mt-3 text-center text-sm text-[#AFC0E8]">您的定制需求如下</p>
-            <div className="mt-8 rounded-xl border border-[#22345F] bg-[#0B1228] p-6">
-              <ul className="space-y-3 text-sm text-[#AFC0E8]">
-                {selectedSummary.map((item) => (
-                  <li key={item.label} className="flex items-start gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#165DFF]" />
-                    <span>
-                      <span className="font-semibold text-[#EAF1FF]">{item.label}：</span>
-                      {item.value}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-8 rounded-xl bg-gradient-to-r from-[#165DFF] to-[#4080FF] p-8 text-center text-white">
-              <p className="text-sm text-[#E8F3FF]">基于您的需求，本次定制报价区间为</p>
-              <p className="mt-3 text-3xl font-bold tracking-wide">
-                {formatPrice(priceRange.min)} - {formatPrice(priceRange.max)}
-              </p>
-              <p className="mt-2 text-xs text-[#E8F3FF]">
-                注：以上为需求初步预估报价区间；最终精准报价、交付细则、修改权限，添加微信一对一沟通定稿。
-              </p>
-            </div>
-            <div className="mt-8 rounded-xl border border-[#22345F] bg-[#0B1228] p-6 text-sm leading-7 text-[#AFC0E8]">
-              <h2 className="text-base font-semibold text-[#EAF1FF]">交付说明</h2>
-              <p className="mt-2">
-                交付内容包含对应成品、使用教程、1次免费修改；售后范围为成品正常使用故障，不包含需求变更后的修改；交付周期按您选择的周期执行。
-              </p>
-              {!!submitMessage && <p className="mt-3 text-[#165DFF]">{submitMessage}</p>}
-            </div>
-            <div className="mt-8 text-center">
-              <img
-                src={qrcodeFallback ? "/assets/wechat-qr-placeholder.svg" : SITE_CONFIG.wechatQrImage}
-                alt="微信二维码"
-                loading="lazy"
-                className="mx-auto h-36 w-36 rounded-lg border border-[#22345F] bg-[#101A35] p-1"
-                onError={() => setQrcodeFallback(true)}
-              />
-              <p className="mt-3 text-sm font-semibold text-[#165DFF]">{SITE_CONFIG.leadIntro}</p>
-            </div>
-            <div className="mt-8 flex flex-col items-center gap-3">
-              <button onClick={resetForm} className="text-sm font-medium text-[#165DFF] hover:underline">
-                返回需求提交页，修改需求
-              </button>
-              <button onClick={() => onNavigate("home")} className="text-sm text-[#AFC0E8] hover:text-[#7EA5FF]">
-                返回首页
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
-      <section className="min-h-screen bg-gradient-to-br from-[#060B1A] via-[#0B1228] to-[#101A35] px-4 pb-16 pt-24 md:px-6">
+    <section className="min-h-screen bg-gradient-to-br from-[#060B1A] via-[#0B1228] to-[#101A35] px-4 pb-16 pt-24 md:px-6">
       <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between rounded-xl border border-[#22345F] bg-[#101A35]/95 p-5 shadow-[0_2px_12px_rgba(22,93,255,0.15)]">
           <div>
-            <h1 className="text-2xl font-bold text-[#EAF1FF] md:text-3xl">AI提效工具定制需求提交</h1>
-            <p className="mt-2 text-sm text-[#AFC0E8]">层层选择，精准锁定需求，自动生成报价</p>
+            <h1 className="text-2xl font-bold text-[#EAF1FF] md:text-3xl">AI定制需求对话助手</h1>
+            <p className="mt-2 text-sm text-[#AFC0E8]">通过对话自动梳理需求、输出解决方案并生成报价区间</p>
           </div>
           <button onClick={() => onNavigate("home")} className="text-sm text-[#165DFF] hover:underline">
             返回首页
           </button>
         </div>
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
-          <article className="rounded-2xl border border-[#22345F] bg-[#101A35] p-7 shadow-[0_2px_12px_rgba(22,93,255,0.15)] md:p-8">
-            <p className="text-sm text-[#AFC0E8]">步骤 {step}/5：请按步骤选择，每步均可返回修改，提交后将生成精准报价。</p>
 
-            {1 === step && (
-              <div className="mt-6 space-y-3">
-                {requirementOptions.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setFormData({ ...formData, requirementType: item.id })}
-                    className={`w-full rounded-lg border p-4 text-left transition-all duration-300 ${
-                      item.id === formData.requirementType
-                        ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] shadow-[0_2px_12px_rgba(22,93,255,0.18)]"
-                        : "border-[#22345F] bg-[#0B1228] hover:-translate-y-0.5 hover:border-[#165DFF] hover:shadow-[0_6px_20px_rgba(22,93,255,0.2)]"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-[#EAF1FF]">{item.label}</p>
-                    <p className="mt-1 text-xs text-[#AFC0E8]">{item.desc}</p>
-                    <p className="mt-2 text-xs font-semibold text-[#165DFF]">
-                      基础报价：{formatPrice(item.base.min)} - {formatPrice(item.base.max)}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {2 === step && (
-              <div className="mt-6 space-y-3">
-                {scenarioOptions.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setFormData({ ...formData, scenario: item.id })}
-                    className={`w-full rounded-lg border p-4 text-left transition-all duration-300 ${
-                      item.id === formData.scenario
-                        ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] shadow-[0_2px_12px_rgba(22,93,255,0.18)]"
-                        : "border-[#22345F] bg-[#0B1228] hover:-translate-y-0.5 hover:border-[#165DFF] hover:shadow-[0_6px_20px_rgba(22,93,255,0.2)]"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-[#EAF1FF]">{item.label}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {3 === step && (
-              <div className="mt-6 space-y-3">
-                {complexityOptions.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setFormData({ ...formData, complexity: item.id })}
-                    className={`w-full rounded-lg border p-4 text-left transition-all duration-300 ${
-                      item.id === formData.complexity
-                        ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] shadow-[0_2px_12px_rgba(22,93,255,0.18)]"
-                        : "border-[#22345F] bg-[#0B1228] hover:-translate-y-0.5 hover:border-[#165DFF] hover:shadow-[0_6px_20px_rgba(22,93,255,0.2)]"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-[#EAF1FF]">{item.label}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {4 === step && (
-              <div className="mt-6 space-y-3">
-                {timelineOptions.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setFormData({ ...formData, timeline: item.id })}
-                    className={`w-full rounded-lg border p-4 text-left transition-all duration-300 ${
-                      item.id === formData.timeline
-                        ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] shadow-[0_2px_12px_rgba(22,93,255,0.18)]"
-                        : "border-[#22345F] bg-[#0B1228] hover:-translate-y-0.5 hover:border-[#165DFF] hover:shadow-[0_6px_20px_rgba(22,93,255,0.2)]"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-[#EAF1FF]">{item.label}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {5 === step && (
-              <div className="mt-6 space-y-4">
-                <div className="rounded-lg border border-[#22345F] bg-[#0B1228] p-4">
-                  <label className="mb-2 block text-sm font-semibold text-[#EAF1FF]">补充说明（5-500字）</label>
-                  <textarea
-                    value={formData.note}
-                    onChange={(event) => setFormData({ ...formData, note: event.target.value.slice(0, 500) })}
-                    placeholder="请填写额外需求、特殊要求，无则留空"
-                    className="h-32 w-full rounded-lg border border-[#22345F] bg-[#101A35] p-3 text-sm text-[#EAF1FF] outline-none transition focus:border-[#165DFF]"
-                  />
-                  <p className="mt-2 text-xs text-[#AFC0E8]">{noteLength}/500 字</p>
-                  {!hasValidNote && <p className="mt-1 text-xs text-[#165DFF]">请简单描述你的定制需求（至少5字）。</p>}
-                </div>
-                <div className="rounded-lg border border-[#22345F] bg-[#0B1228] p-4">
-                  <label className="mb-2 block text-sm font-semibold text-[#EAF1FF]">联系方式（必填）</label>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      onClick={() => setFormData({ ...formData, contactType: "wechat" })}
-                      className={`rounded-lg border p-3 text-sm ${
-                        "wechat" === formData.contactType
-                          ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] text-[#7EA5FF]"
-                          : "border-[#22345F] bg-[#101A35] text-[#AFC0E8]"
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
+          <article className="rounded-2xl border border-[#22345F] bg-[#101A35] p-4 shadow-[0_2px_12px_rgba(22,93,255,0.15)] md:p-5">
+            <div
+              ref={messageContainerRef}
+              className="h-[520px] overflow-y-auto rounded-xl border border-[#22345F] bg-[#0B1228] p-4 md:h-[600px]"
+            >
+              <div className="space-y-4">
+                {messages.map((message, index) => (
+                  <div key={`${message.at}-${index}`} className={`flex ${"user" === message.role ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[88%] rounded-xl px-4 py-3 text-sm leading-7 ${
+                        "user" === message.role
+                          ? "bg-gradient-to-r from-[#165DFF] to-[#4080FF] text-white"
+                          : "border border-[#22345F] bg-[#101A35] text-[#EAF1FF]"
                       }`}
                     >
-                      微信
-                    </button>
-                    <button
-                      onClick={() => setFormData({ ...formData, contactType: "email" })}
-                      className={`rounded-lg border p-3 text-sm ${
-                        "email" === formData.contactType
-                          ? "border-[#165DFF] bg-gradient-to-r from-[#142449] to-[#0F1A37] text-[#7EA5FF]"
-                          : "border-[#22345F] bg-[#101A35] text-[#AFC0E8]"
-                      }`}
-                    >
-                      邮箱
-                    </button>
+                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    </div>
                   </div>
-                  <input
-                    value={formData.contactValue}
-                    onChange={(event) => setFormData({ ...formData, contactValue: event.target.value })}
-                    placeholder="请预留联系方式，便于后续精准报价对接"
-                    className="mt-3 w-full rounded-lg border border-[#22345F] bg-[#101A35] p-3 text-sm text-[#EAF1FF] outline-none transition focus:border-[#165DFF]"
-                  />
-                  {!hasValidContact && (
-                    <p className="mt-2 text-xs text-[#165DFF]">请预留联系方式，便于后续精准报价对接。</p>
-                  )}
-                </div>
+                ))}
+                {isSending && (
+                  <div className="flex justify-start">
+                    <div className="rounded-xl border border-[#22345F] bg-[#101A35] px-4 py-3 text-sm text-[#AFC0E8]">
+                      Agent正在分析需求并生成方案...
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-
-            <div className="mt-8 flex items-center justify-between">
-              <button
-                onClick={() => setStep(Math.max(1, step - 1))}
-                disabled={1 === step}
-                className={`rounded-lg px-4 py-2 text-sm ${
-                  1 === step ? "bg-[#101A35] text-[#6E7EA8]" : "bg-[#142449] text-[#7EA5FF] hover:bg-[#1A2C57]"
-                }`}
-              >
-                上一步
-              </button>
-              {step < 5 ? (
-                <button
-                  onClick={() => setStep(Math.min(5, step + 1))}
-                  disabled={!canNext()}
-                  className={`rounded-lg px-5 py-2 text-sm font-medium ${
-                    canNext()
-                      ? "bg-gradient-to-r from-[#165DFF] to-[#4080FF] text-white shadow-[0_2px_12px_rgba(22,93,255,0.2)]"
-                      : "bg-[#101A35] text-[#6E7EA8]"
-                  }`}
-                >
-                  下一步
-                </button>
-              ) : (
-                <button
-                  onClick={submitDemand}
-                  disabled={isSubmitting || !canNext()}
-                  className={`rounded-lg px-5 py-2 text-sm font-medium ${
-                    !isSubmitting && canNext()
-                      ? "bg-gradient-to-r from-[#165DFF] to-[#4080FF] text-white shadow-[0_2px_12px_rgba(22,93,255,0.2)]"
-                      : "bg-[#101A35] text-[#6E7EA8]"
-                  }`}
-                >
-                  {isSubmitting ? "提交中..." : "提交需求，获取精准报价"}
-                </button>
-              )}
             </div>
-            {!!submitMessage && (
-              <p className="mt-4 text-sm text-[#7EA5FF]">
-                {submitMessage}
-              </p>
-            )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {starterPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => sendMessage(prompt)}
+                  className="rounded-full border border-[#2A3E6A] bg-[#0E1A35] px-3 py-1.5 text-xs text-[#AFC0E8] transition hover:border-[#165DFF] hover:text-[#EAF1FF]"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#22345F] bg-[#0B1228] p-3">
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value.slice(0, 1200))}
+                placeholder="请描述你的目标、应用场景、预算范围、预计上线时间..."
+                className="h-28 w-full resize-none rounded-lg border border-[#22345F] bg-[#101A35] p-3 text-sm text-[#EAF1FF] outline-none transition focus:border-[#165DFF]"
+              />
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-xs text-[#AFC0E8]">{input.trim().length}/1200</p>
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={isSending || !input.trim()}
+                  className={`rounded-lg px-5 py-2 text-sm font-medium ${
+                    !isSending && !!input.trim()
+                      ? "bg-gradient-to-r from-[#165DFF] to-[#4080FF] text-white shadow-[0_2px_12px_rgba(22,93,255,0.2)]"
+                      : "bg-[#101A35] text-[#6E7EA8]"
+                  }`}
+                >
+                  {isSending ? "分析中..." : "发送并生成方案"}
+                </button>
+              </div>
+              {!!errorMessage && <p className="mt-3 text-xs text-[#7EA5FF]">{errorMessage}</p>}
+            </div>
           </article>
 
           <aside className="rounded-2xl border border-[#22345F] bg-[#101A35] p-5 shadow-[0_2px_12px_rgba(22,93,255,0.15)] lg:sticky lg:top-24 lg:h-fit">
-            <h2 className="text-base font-semibold text-[#165DFF]">实时报价</h2>
-            <ul className="mt-4 space-y-2 text-xs text-[#AFC0E8]">
-              {selectedSummary.slice(0, 4).map((item) => (
-                <li key={item.label} className="flex items-start gap-2 rounded-md bg-[#0B1228] p-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#165DFF]" />
-                  <span>
-                    {item.label}：{item.value}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-5 rounded-xl bg-gradient-to-r from-[#165DFF] to-[#4080FF] p-4 text-center text-white">
-              <p className="text-xs text-[#E8F3FF]">当前报价区间</p>
-              <p className="mt-2 text-lg font-bold">
-                {formatPrice(priceRange.min)} - {formatPrice(priceRange.max)}
+            <h2 className="text-base font-semibold text-[#165DFF]">对话结果面板</h2>
+            {!latestResult && (
+              <p className="mt-3 text-sm leading-7 text-[#AFC0E8]">
+                先发送需求信息，Agent会自动在这里更新“需求总结、解决方案、报价区间”。
               </p>
-              <p className="mt-2 text-[11px] text-[#E8F3FF]">
-                注：以上为需求初步预估报价区间；最终精准报价、交付细则、修改权限，添加微信一对一沟通定稿。
+            )}
+
+            {!!latestResult?.summary && (
+              <div className="mt-4 rounded-lg border border-[#22345F] bg-[#0B1228] p-4">
+                <p className="text-xs font-semibold text-[#7EA5FF]">需求总结</p>
+                <p className="mt-2 text-sm leading-7 text-[#EAF1FF]">{latestResult.summary}</p>
+              </div>
+            )}
+
+            {!!latestResult?.solution?.length && (
+              <div className="mt-4 rounded-lg border border-[#22345F] bg-[#0B1228] p-4">
+                <p className="text-xs font-semibold text-[#7EA5FF]">解决方案</p>
+                <ul className="mt-2 space-y-2 text-sm text-[#EAF1FF]">
+                  {latestResult.solution.map((item, index) => (
+                    <li key={`${item}-${index}`} className="flex items-start gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#165DFF]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!!latestResult?.quotation && (
+              <div className="mt-4 rounded-xl bg-gradient-to-r from-[#165DFF] to-[#4080FF] p-4 text-white">
+                <p className="text-xs text-[#E8F3FF]">报价区间（初步）</p>
+                <p className="mt-2 text-xl font-bold">
+                  {formatPrice(latestResult.quotation.min, latestResult.quotation.currency)} -{" "}
+                  {formatPrice(latestResult.quotation.max, latestResult.quotation.currency)}
+                </p>
+                <p className="mt-1 text-xs text-[#E8F3FF]">预计交付周期：{latestResult.quotation.deliveryDays}</p>
+                {!!latestResult.quotation.breakdown.length && (
+                  <ul className="mt-3 space-y-1 text-xs text-[#E8F3FF]">
+                    {latestResult.quotation.breakdown.map((item, index) => (
+                      <li key={`${item.name}-${index}`}>- {item.name}：{item.detail}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <div className="mt-5 rounded-lg border border-[#22345F] bg-[#0B1228] p-4 text-center">
+              <img
+                src={qrcodeFallback ? "/assets/wechat-qr-placeholder.svg" : SITE_CONFIG.wechatQrImage}
+                alt="微信二维码"
+                loading="lazy"
+                className="mx-auto h-28 w-28 rounded-lg border border-[#22345F] bg-[#101A35] p-1"
+                onError={() => setQrcodeFallback(true)}
+              />
+              <p className="mt-3 text-xs leading-6 text-[#AFC0E8]">
+                {latestResult?.wechatGuide || "方案满意后可添加微信，进入下一轮需求细化与合同报价。"}
               </p>
+              <p className="mt-2 text-xs font-semibold text-[#165DFF]">{SITE_CONFIG.leadIntro}</p>
             </div>
           </aside>
         </div>
