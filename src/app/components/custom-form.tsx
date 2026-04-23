@@ -53,8 +53,6 @@ function sanitizeInput(value: string): string {
   return value.replace(/[<>]/g, "").trim().slice(0, 1200);
 }
 
-const starterPrompts = ["我想做企业内部知识库问答智能体", "我想做小红书内容生产工作流", "我想做销售线索自动跟进Agent"];
-
 export default function CustomForm({ onNavigate }: CustomFormProps) {
   const [input, setInput] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
@@ -62,15 +60,21 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
   const [qrcodeFallback, setQrcodeFallback] = useState<boolean>(false);
   const [conversationId, setConversationId] = useState<string>("");
   const [sessionId] = useState<string>(() => createSessionId());
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "你好，我是AI定制需求助手。你可以直接说目标、行业、用户规模、上线时间和预算范围，我会先帮你梳理需求，再生成方案和报价。",
-      at: new Date().toISOString(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const starterPrompts = useMemo(() => {
+    const list = SITE_CONFIG.agentStarterPrompts;
+    return Array.isArray(list) ? [...list] : [];
+  }, []);
+
+  const backdropUrl = useMemo(() => {
+    const custom = SITE_CONFIG.customAgentBackdropImage;
+    if ("string" === typeof custom && custom.trim().length > 0) {
+      return custom.trim();
+    }
+    return SITE_CONFIG.heroBackgroundImage;
+  }, []);
 
   useEffect(() => {
     if (messageContainerRef.current) {
@@ -188,90 +192,122 @@ export default function CustomForm({ onNavigate }: CustomFormProps) {
   };
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-[#060B1A] via-[#0B1228] to-[#101A35] px-4 pb-16 pt-24 md:px-6">
+    <section
+      className="relative min-h-screen px-4 pb-16 pt-24 md:px-6"
+      style={{
+        backgroundImage: `linear-gradient(165deg, rgba(6,11,26,0.94) 0%, rgba(11,18,40,0.92) 45%, rgba(16,26,53,0.9) 100%), url(${backdropUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
       <div className="mx-auto max-w-7xl">
-        <div className="flex items-center justify-between rounded-xl border border-[#22345F] bg-[#101A35]/95 p-5 shadow-[0_2px_12px_rgba(22,93,255,0.15)]">
+        <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#0B1228]/80 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#EAF1FF] md:text-3xl">AI定制需求对话助手</h1>
-            <p className="mt-2 text-sm text-[#AFC0E8]">通过对话自动梳理需求、输出解决方案并生成报价区间</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#7EA5FF]/90">CommonOnes · Agent</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#F4F7FF] md:text-3xl">定制需求智能体</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#AFC0E8]">
+              对话由您在扣子中配置的智能体生成；本站仅负责会话展示与结构化结果面板。欢迎语与推荐问题以智能体回复为准。
+            </p>
           </div>
-          <button onClick={() => onNavigate("home")} className="text-sm text-[#165DFF] hover:underline">
+          <button
+            type="button"
+            onClick={() => onNavigate("home")}
+            className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-[#EAF1FF] transition hover:border-[#165DFF]/60 hover:bg-[#165DFF]/10"
+          >
             返回首页
           </button>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
-          <article className="rounded-2xl border border-[#22345F] bg-[#101A35] p-4 shadow-[0_2px_12px_rgba(22,93,255,0.15)] md:p-5">
+          <article className="rounded-2xl border border-white/10 bg-[#0B1228]/75 p-4 shadow-[0_16px_48px_rgba(0,0,0,0.35)] backdrop-blur-md md:p-6">
             <div
               ref={messageContainerRef}
-              className="h-[520px] overflow-y-auto rounded-xl border border-[#22345F] bg-[#0B1228] p-4 md:h-[600px]"
+              className="h-[520px] overflow-y-auto rounded-xl border border-white/10 bg-[#060B18]/85 p-4 md:h-[600px]"
             >
               <div className="space-y-4">
+                {0 === messages.length && !isSending && (
+                  <div className="rounded-xl border border-dashed border-[#2A3E6A] bg-[#101A35]/60 p-6 text-center">
+                    <p className="text-sm font-medium text-[#EAF1FF]">开始对话</p>
+                    <p className="mt-2 text-xs leading-relaxed text-[#8FA3D6]">
+                      发送第一条消息后，智能体会按扣子后台的人设、开场与流程回复。页面快捷按钮可在{" "}
+                      <code className="rounded bg-[#0B1228] px-1.5 py-0.5 text-[11px] text-[#AFC0E8]">siteConfig.agentStarterPrompts</code>{" "}
+                      中按需配置；留空则不显示，避免与扣子推荐重复。
+                    </p>
+                  </div>
+                )}
                 {messages.map((message, index) => (
                   <div key={`${message.at}-${index}`} className={`flex ${"user" === message.role ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[88%] rounded-xl px-4 py-3 text-sm leading-7 ${
+                      className={`max-w-[min(92%,42rem)] rounded-2xl px-4 py-3 text-[15px] leading-relaxed shadow-sm ${
                         "user" === message.role
-                          ? "bg-gradient-to-r from-[#165DFF] to-[#4080FF] text-white"
-                          : "border border-[#22345F] bg-[#101A35] text-[#EAF1FF]"
+                          ? "bg-gradient-to-br from-[#165DFF] to-[#2B6BFF] text-white"
+                          : "border border-white/10 bg-[#121C33]/95 text-[#EAF1FF]"
                       }`}
                     >
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      <p className="whitespace-pre-wrap break-words [word-break:break-word]">{message.content}</p>
                     </div>
                   </div>
                 ))}
                 {isSending && (
                   <div className="flex justify-start">
-                    <div className="rounded-xl border border-[#22345F] bg-[#101A35] px-4 py-3 text-sm text-[#AFC0E8]">
-                      Agent正在分析需求并生成方案...
+                    <div className="rounded-2xl border border-white/10 bg-[#121C33]/95 px-4 py-3 text-sm text-[#AFC0E8]">
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-[#165DFF]" />
+                        正在等待智能体回复…
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {starterPrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => sendMessage(prompt)}
-                  className="rounded-full border border-[#2A3E6A] bg-[#0E1A35] px-3 py-1.5 text-xs text-[#AFC0E8] transition hover:border-[#165DFF] hover:text-[#EAF1FF]"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
+            {starterPrompts.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {starterPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => sendMessage(prompt)}
+                    className="rounded-full border border-white/12 bg-[#101A35]/80 px-3 py-1.5 text-xs text-[#C8D6F5] transition hover:border-[#165DFF]/50 hover:text-white"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            <div className="mt-4 rounded-xl border border-[#22345F] bg-[#0B1228] p-3">
+            <div className="mt-4 rounded-xl border border-white/10 bg-[#060B18]/80 p-3">
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value.slice(0, 1200))}
-                placeholder="请描述你的目标、应用场景、预算范围、预计上线时间..."
-                className="h-28 w-full resize-none rounded-lg border border-[#22345F] bg-[#101A35] p-3 text-sm text-[#EAF1FF] outline-none transition focus:border-[#165DFF]"
+                placeholder="请描述你的目标、应用场景、预算范围、预计上线时间…"
+                className="h-28 w-full resize-none rounded-lg border border-white/10 bg-[#101A35]/90 p-3 text-sm text-[#EAF1FF] outline-none transition placeholder:text-[#6E7EA8] focus:border-[#165DFF]/70 focus:ring-1 focus:ring-[#165DFF]/30"
               />
               <div className="mt-3 flex items-center justify-between">
-                <p className="text-xs text-[#AFC0E8]">{input.trim().length}/1200</p>
+                <p className="text-xs text-[#8FA3D6]">{input.trim().length}/1200</p>
                 <button
+                  type="button"
                   onClick={() => sendMessage()}
                   disabled={isSending || !input.trim()}
-                  className={`rounded-lg px-5 py-2 text-sm font-medium ${
+                  className={`rounded-lg px-5 py-2 text-sm font-semibold ${
                     !isSending && !!input.trim()
-                      ? "bg-gradient-to-r from-[#165DFF] to-[#4080FF] text-white shadow-[0_2px_12px_rgba(22,93,255,0.2)]"
-                      : "bg-[#101A35] text-[#6E7EA8]"
+                      ? "bg-gradient-to-r from-[#165DFF] to-[#3B74FF] text-white shadow-[0_8px_24px_rgba(22,93,255,0.35)]"
+                      : "cursor-not-allowed bg-[#1A243D] text-[#6E7EA8]"
                   }`}
                 >
-                  {isSending ? "分析中..." : "发送并生成方案"}
+                  {isSending ? "发送中…" : "发送"}
                 </button>
               </div>
-              {!!errorMessage && <p className="mt-3 text-xs text-[#7EA5FF]">{errorMessage}</p>}
+              {!!errorMessage && <p className="mt-3 text-xs text-[#FF9A8B]">{errorMessage}</p>}
             </div>
           </article>
 
-          <aside className="rounded-2xl border border-[#22345F] bg-[#101A35] p-5 shadow-[0_2px_12px_rgba(22,93,255,0.15)] lg:sticky lg:top-24 lg:h-fit">
-            <h2 className="text-base font-semibold text-[#165DFF]">对话结果面板</h2>
+          <aside className="rounded-2xl border border-white/10 bg-[#0B1228]/80 p-5 shadow-[0_16px_48px_rgba(0,0,0,0.35)] backdrop-blur-md lg:sticky lg:top-24 lg:h-fit">
+            <h2 className="text-base font-semibold text-[#7EA5FF]">结构化结果</h2>
             {!latestResult && (
-              <p className="mt-3 text-sm leading-7 text-[#AFC0E8]">
-                先发送需求信息，Agent会自动在这里更新“需求总结、解决方案、报价区间”。
+              <p className="mt-3 text-sm leading-relaxed text-[#AFC0E8]">
+                发送需求后，若智能体按约定返回 JSON 结构，这里会同步展示需求总结、方案要点与报价区间。
               </p>
             )}
 

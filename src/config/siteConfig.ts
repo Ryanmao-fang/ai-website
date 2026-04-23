@@ -2,7 +2,11 @@ export const SITE_CONFIG = {
   brandTitle: "您的AI定制私域",
   domainUrl: "https://www.commononesai.cn/",
   heroBackgroundImage:
-    "/assets/Image/ryanmao_917_abstract_fluid_art_oil_painting_texture_soft_diff_e50abdf2-050e-4654-9cbc-87bc59746736_1.png",
+    "/assets/Image/ryanmao_917_abstract_fluid_art_oil_painting_texture_soft_diff_d24a976f-5e1e-4398-9e37-fa4a06b0db45_0.png",
+  /** 定制需求页背景；留空则使用 heroBackgroundImage */
+  customAgentBackdropImage: "",
+  /** 页面底部快捷提问按钮；留空数组则不展示，避免与扣子侧推荐问题重复 */
+  agentStarterPrompts: [] as readonly string[],
   wechatQrImage: "/assets/Image/qrcode.png",
   leadIntro:
     "添加私人微信 | 一对一需求对接 | 精准定稿报价 | 定制方案全程服务",
